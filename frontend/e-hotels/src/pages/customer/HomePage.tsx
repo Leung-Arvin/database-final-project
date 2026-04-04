@@ -24,6 +24,70 @@ export default function CustomerHomePage({
   const [filteredRooms, setFilteredRooms] = useState<Room[]>([])
   const [showBookingModal, setShowBookingModal] = useState(false)
   const [bookingDates, setBookingDates] = useState({ startDate: '', endDate: '' })
+  const [dateError, setDateError] = useState('')
+  
+  // Helper function to create date without timezone issues
+  const createUTCDate = (dateString: string): Date => {
+    if (!dateString) return new Date(NaN)
+    const [year, month, day] = dateString.split('-').map(Number)
+    return new Date(Date.UTC(year, month - 1, day))
+  }
+  
+  // Helper function to format date for comparison (YYYY-MM-DD)
+  const formatDateForComparison = (date: Date): string => {
+    return date.toISOString().split('T')[0]
+  }
+  
+  // Helper function to get today's date in YYYY-MM-DD format
+  const getTodayString = (): string => {
+    const today = new Date()
+    const year = today.getFullYear()
+    const month = String(today.getMonth() + 1).padStart(2, '0')
+    const day = String(today.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }
+  
+  // Validate dates (using UTC to avoid timezone issues)
+  const validateDates = (startDateStr: string, endDateStr: string): boolean => {
+    if (!startDateStr || !endDateStr) {
+      setDateError('')
+      return true
+    }
+    
+    const startDate = createUTCDate(startDateStr)
+    const endDate = createUTCDate(endDateStr)
+    const today = new Date()
+    const todayUTC = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()))
+    
+    if (startDate < todayUTC) {
+      setDateError('Check-in date cannot be in the past')
+      return false
+    }
+    
+    if (endDate <= startDate) {
+      setDateError('Check-out date must be after check-in date')
+      return false
+    }
+    
+    setDateError('')
+    return true
+  }
+  
+  // Check if room is available for given dates
+  const isRoomAvailable = (roomId: number, startDateStr: string, endDateStr: string): boolean => {
+    const startDate = createUTCDate(startDateStr)
+    const endDate = createUTCDate(endDateStr)
+    
+    const conflictingBooking = bookings.find(b => 
+      b.roomId === roomId && 
+      b.status !== 'cancelled' &&
+      b.status !== 'checked_out' &&
+      createUTCDate(b.startDate.toString()) < endDate &&
+      createUTCDate(b.endDate.toString()) > startDate
+    )
+    
+    return !conflictingBooking
+  }
   
   // Search criteria state
   const [criteria, setCriteria] = useState({
@@ -44,9 +108,31 @@ export default function CustomerHomePage({
   const categories = Array.from(new Set(hotels.map(h => h.category))).sort()
   const capacities = ['single', 'double', 'triple', 'quad']
   
+  // Handle date changes in search criteria
+  const handleDateChange = (type: 'start' | 'end', value: string) => {
+    const newStartDate = type === 'start' ? value : criteria.startDate
+    const newEndDate = type === 'end' ? value : criteria.endDate
+    
+    setCriteria({
+      ...criteria,
+      [type === 'start' ? 'startDate' : 'endDate']: value
+    })
+    
+    validateDates(newStartDate, newEndDate)
+  }
+  
   // Real-time search - updates as any criteria changes
   useEffect(() => {
     let filtered = [...rooms]
+    
+    // Validate dates before filtering
+    if (criteria.startDate && criteria.endDate) {
+      const isValid = validateDates(criteria.startDate, criteria.endDate)
+      if (!isValid) {
+        setFilteredRooms([])
+        return
+      }
+    }
     
     // Filter by area
     if (criteria.area) {
@@ -95,18 +181,11 @@ export default function CustomerHomePage({
       filtered = filtered.filter(r => r.price <= parseInt(criteria.maxPrice))
     }
     
-    // Filter by date availability (simplified - in real app would check against existing bookings)
-    if (criteria.startDate && criteria.endDate) {
-      // Check if room is available for the selected dates
-      filtered = filtered.filter(room => {
-        const existingBookings = bookings.filter(b => 
-          b.roomId === room.id && 
-          b.status !== 'cancelled' &&
-          new Date(b.startDate) < new Date(criteria.endDate) &&
-          new Date(b.endDate) > new Date(criteria.startDate)
-        )
-        return existingBookings.length === 0
-      })
+    // Filter by date availability
+    if (criteria.startDate && criteria.endDate && validateDates(criteria.startDate, criteria.endDate)) {
+      filtered = filtered.filter(room => 
+        isRoomAvailable(room.id, criteria.startDate, criteria.endDate)
+      )
     }
     
     setFilteredRooms(filtered)
@@ -131,9 +210,27 @@ export default function CustomerHomePage({
       maxPrice: ''
     })
     setBookingDates({ startDate: '', endDate: '' })
+    setDateError('')
   }
   
   const handleBookRoom = (room: Room) => {
+    // Validate dates before allowing booking
+    if (!criteria.startDate || !criteria.endDate) {
+      alert('Please select both check-in and check-out dates before booking')
+      return
+    }
+    
+    if (!validateDates(criteria.startDate, criteria.endDate)) {
+      alert(dateError)
+      return
+    }
+    
+    // Check availability again
+    if (!isRoomAvailable(room.id, criteria.startDate, criteria.endDate)) {
+      alert('This room is no longer available for the selected dates.')
+      return
+    }
+    
     const hotel = hotels.find(h => h.id === room.hotelId)
     setSelectedRoom(room)
     setSelectedHotel(hotel || null)
@@ -144,38 +241,77 @@ export default function CustomerHomePage({
     setShowBookingModal(true)
   }
   
+  const calculateNights = (startDateStr: string, endDateStr: string): number => {
+    if (!startDateStr || !endDateStr) return 0
+    const start = createUTCDate(startDateStr)
+    const end = createUTCDate(endDateStr)
+    const diffTime = end.getTime() - start.getTime()
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+  }
+  
   const handleConfirmBooking = (e: React.FormEvent) => {
     e.preventDefault()
     
-    const nights = Math.ceil(
-      (new Date(bookingDates.endDate).getTime() - new Date(bookingDates.startDate).getTime()) / 
-      (1000 * 60 * 60 * 24)
-    )
+    // Re-validate dates on confirmation
+    if (!validateDates(bookingDates.startDate, bookingDates.endDate)) {
+      alert(dateError)
+      return
+    }
+    
+    const nights = calculateNights(bookingDates.startDate, bookingDates.endDate)
+    
+    if (nights <= 0) {
+      alert('Invalid date range. Check-out date must be after check-in date.')
+      return
+    }
+    
     const totalPrice = (selectedRoom?.price || 0) * nights
+    
+    // Check if room is still available for these dates
+    if (!isRoomAvailable(selectedRoom!.id, bookingDates.startDate, bookingDates.endDate)) {
+      alert('Sorry, this room is no longer available for the selected dates.')
+      setShowBookingModal(false)
+      return
+    }
     
     const newBooking: Booking = {
       id: Math.max(...bookings.map(b => b.id), 0) + 1,
       customerId: currentCustomer.id,
       roomId: selectedRoom!.id,
       hotelId: selectedHotel!.id,
-      startDate: new Date(bookingDates.startDate),
-      endDate: new Date(bookingDates.endDate),
+      startDate: createUTCDate(bookingDates.startDate),
+      endDate: createUTCDate(bookingDates.endDate),
       status: 'pending',
       totalPrice: totalPrice,
       bookingDate: new Date()
     }
     
     setBookings([...bookings, newBooking])
-    alert(`Booking confirmed! Total: $${totalPrice}`)
+    alert(`Booking confirmed! Total: $${totalPrice} for ${nights} night(s)`)
     setShowBookingModal(false)
+    
+    // Reset date filters after booking
+    handleReset()
   }
   
-  const calculateNights = () => {
-    if (!bookingDates.startDate || !bookingDates.endDate) return 0
-    const start = new Date(bookingDates.startDate)
-    const end = new Date(bookingDates.endDate)
-    return Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
+  const getMinCheckOutDate = (): string => {
+    if (criteria.startDate) {
+      const startDate = createUTCDate(criteria.startDate)
+      const nextDay = new Date(startDate)
+      nextDay.setUTCDate(startDate.getUTCDate() + 1)
+      return nextDay.toISOString().split('T')[0]
+    }
+    return getTodayString()
   }
+  
+  const isBookingDisabled = () => {
+    return !criteria.startDate || 
+           !criteria.endDate || 
+           !!dateError || 
+           calculateNights(criteria.startDate, criteria.endDate) <= 0
+  }
+  
+  const nights = calculateNights(criteria.startDate, criteria.endDate)
   
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -197,26 +333,41 @@ export default function CustomerHomePage({
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {/* Dates */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Check-in Date</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Check-in Date *</label>
             <input
               type="date"
               name="startDate"
               value={criteria.startDate}
-              onChange={handleCriteriaChange}
+              onChange={(e) => handleDateChange('start', e.target.value)}
+              min={getTodayString()}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Check-out Date</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Check-out Date *</label>
             <input
               type="date"
               name="endDate"
               value={criteria.endDate}
-              onChange={handleCriteriaChange}
+              onChange={(e) => handleDateChange('end', e.target.value)}
+              min={getMinCheckOutDate()}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
+          
+          {/* Date validation message */}
+          {criteria.startDate && criteria.endDate && (
+            <div className="col-span-full">
+              {dateError ? (
+                <p className="text-sm text-red-600 bg-red-50 p-2 rounded">{dateError}</p>
+              ) : nights > 0 ? (
+                <p className="text-sm text-green-600 bg-green-50 p-2 rounded">
+                  ✓ Valid dates selected - {nights} night(s)
+                </p>
+              ) : null}
+            </div>
+          )}
           
           {/* Room Capacity */}
           <div>
@@ -291,6 +442,7 @@ export default function CustomerHomePage({
               value={criteria.minRooms}
               onChange={handleCriteriaChange}
               placeholder="Min rooms"
+              min="0"
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
@@ -303,6 +455,7 @@ export default function CustomerHomePage({
               value={criteria.maxRooms}
               onChange={handleCriteriaChange}
               placeholder="Max rooms"
+              min="0"
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
@@ -316,6 +469,7 @@ export default function CustomerHomePage({
               value={criteria.minPrice}
               onChange={handleCriteriaChange}
               placeholder="Min price"
+              min="0"
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
@@ -328,12 +482,13 @@ export default function CustomerHomePage({
               value={criteria.maxPrice}
               onChange={handleCriteriaChange}
               placeholder="Max price"
+              min="0"
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
         </div>
         
-        <div className="mt-4">
+        <div className="mt-4 flex gap-3">
           <button
             onClick={handleReset}
             className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
@@ -348,15 +503,17 @@ export default function CustomerHomePage({
         <p className="text-gray-600">
           Found <span className="font-bold text-blue-600">{filteredRooms.length}</span> available rooms
         </p>
+        {criteria.startDate && criteria.endDate && !dateError && nights > 0 && (
+          <p className="text-sm text-green-600 mt-1">
+            ✓ Showing availability for {new Date(criteria.startDate).toLocaleDateString()} to {new Date(criteria.endDate).toLocaleDateString()} ({nights} nights)
+          </p>
+        )}
       </div>
       
       {/* Room Results */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredRooms.map((room) => {
           const hotel = hotels.find(h => h.id === room.hotelId)!
-          const nights = criteria.startDate && criteria.endDate 
-            ? Math.ceil((new Date(criteria.endDate).getTime() - new Date(criteria.startDate).getTime()) / (1000 * 60 * 60 * 24))
-            : 0
           const totalPrice = nights * room.price
           
           return (
@@ -376,7 +533,7 @@ export default function CustomerHomePage({
                   <div className="text-right">
                     <p className="text-2xl font-bold text-blue-600">${room.price}</p>
                     <p className="text-xs text-gray-500">/night</p>
-                    {nights > 0 && (
+                    {nights > 0 && !dateError && (
                       <p className="text-sm font-semibold text-green-600 mt-2">
                         Total: ${totalPrice}
                       </p>
@@ -414,14 +571,20 @@ export default function CustomerHomePage({
                 
                 <button
                   onClick={() => handleBookRoom(room)}
-                  disabled={!criteria.startDate || !criteria.endDate}
+                  disabled={isBookingDisabled()}
                   className={`w-full py-2 rounded-md transition-colors ${
-                    criteria.startDate && criteria.endDate
+                    !isBookingDisabled()
                       ? 'bg-blue-600 text-white hover:bg-blue-700'
                       : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                   }`}
                 >
-                  {criteria.startDate && criteria.endDate ? 'Book Now' : 'Select Dates First'}
+                  {!criteria.startDate || !criteria.endDate 
+                    ? 'Select Dates First' 
+                    : dateError 
+                      ? 'Invalid Dates' 
+                      : nights <= 0
+                        ? 'Invalid Date Range'
+                        : 'Book Now'}
                 </button>
               </div>
             </div>
@@ -429,10 +592,17 @@ export default function CustomerHomePage({
         })}
       </div>
       
-      {filteredRooms.length === 0 && (
+      {filteredRooms.length === 0 && criteria.startDate && criteria.endDate && !dateError && nights > 0 && (
         <div className="text-center py-12 bg-white rounded-lg shadow-md">
           <div className="text-6xl mb-4">🔍</div>
-          <p className="text-gray-500">No rooms match your criteria. Try adjusting your filters.</p>
+          <p className="text-gray-500">No rooms available for the selected dates. Try different dates.</p>
+        </div>
+      )}
+      
+      {filteredRooms.length === 0 && (!criteria.startDate || !criteria.endDate) && (
+        <div className="text-center py-12 bg-white rounded-lg shadow-md">
+          <div className="text-6xl mb-4">📅</div>
+          <p className="text-gray-500">Please select check-in and check-out dates to see available rooms.</p>
         </div>
       )}
       
@@ -454,9 +624,17 @@ export default function CustomerHomePage({
                   <p className="text-sm text-gray-600">Price: ${selectedRoom.price}/night</p>
                   <p className="text-sm text-gray-600">Check-in: {bookingDates.startDate}</p>
                   <p className="text-sm text-gray-600">Check-out: {bookingDates.endDate}</p>
-                  <p className="text-sm text-gray-600">Nights: {calculateNights()}</p>
-                  <p className="text-lg font-bold text-blue-600 mt-2">Total: ${(selectedRoom.price * calculateNights())}</p>
+                  <p className="text-sm text-gray-600">Nights: {calculateNights(bookingDates.startDate, bookingDates.endDate)}</p>
+                  <p className="text-lg font-bold text-blue-600 mt-2">
+                    Total: ${(selectedRoom.price * calculateNights(bookingDates.startDate, bookingDates.endDate))}
+                  </p>
                 </div>
+                
+                {calculateNights(bookingDates.startDate, bookingDates.endDate) <= 0 && (
+                  <div className="mb-4 p-3 bg-red-50 rounded-lg">
+                    <p className="text-sm text-red-600">⚠️ Invalid date range. Check-out date must be after check-in date.</p>
+                  </div>
+                )}
                 
                 <div className="mb-4 p-4 bg-blue-50 rounded-lg">
                   <p className="text-sm text-blue-800">
@@ -466,10 +644,22 @@ export default function CustomerHomePage({
                 </div>
                 
                 <div className="flex gap-3">
-                  <button type="submit" className="flex-1 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                  <button 
+                    type="submit" 
+                    disabled={calculateNights(bookingDates.startDate, bookingDates.endDate) <= 0}
+                    className={`flex-1 py-2 rounded-md font-semibold ${
+                      calculateNights(bookingDates.startDate, bookingDates.endDate) > 0
+                        ? 'bg-blue-600 text-white hover:bg-blue-700'
+                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    }`}
+                  >
                     Confirm Booking
                   </button>
-                  <button type="button" onClick={() => setShowBookingModal(false)} className="flex-1 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300">
+                  <button 
+                    type="button" 
+                    onClick={() => setShowBookingModal(false)} 
+                    className="flex-1 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
+                  >
                     Cancel
                   </button>
                 </div>
