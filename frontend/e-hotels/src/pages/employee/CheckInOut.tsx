@@ -26,13 +26,27 @@ export default function EmployeeCheckInOut({
   const [paymentAmount, setPaymentAmount] = useState('')
   const [paymentMethod, setPaymentMethod] = useState('credit_card')
   
+  // Payment details for check-in
+  const [checkinPayment, setCheckinPayment] = useState({
+    amount: '',
+    method: 'credit_card',
+    cardNumber: '',
+    cardExpiry: '',
+    cardCvv: '',
+    cardholderName: ''
+  })
+  
   // Direct rental form
   const [directRentForm, setDirectRentForm] = useState({
     customerId: '',
     roomId: '',
     startDate: '',
     endDate: '',
-    paymentAmount: ''
+    paymentMethod: 'credit_card',
+    cardNumber: '',
+    cardExpiry: '',
+    cardCvv: '',
+    cardholderName: ''
   })
   
   const handleSearch = () => {
@@ -51,7 +65,7 @@ export default function EmployeeCheckInOut({
     
     setFoundBooking(booking || null)
     if (!booking) {
-      alert('No booking found')
+      alert('No confirmed booking found')
     }
   }
   
@@ -67,8 +81,19 @@ export default function EmployeeCheckInOut({
     return rooms.find(r => r.id === roomId)
   }
   
-  const handleCheckIn = () => {
-    if (foundBooking) {
+  const handleCheckInWithPayment = () => {
+    if (foundBooking && checkinPayment.amount) {
+      const nights = Math.ceil((foundBooking.endDate.getTime() - foundBooking.startDate.getTime()) / (1000 * 60 * 60 * 24))
+      const expectedTotal = foundBooking.totalPrice
+      const paidAmount = parseFloat(checkinPayment.amount)
+      
+      if (paidAmount < expectedTotal) {
+        if (!confirm(`Payment amount $${paidAmount} is less than the total $${expectedTotal}. The customer will need to pay the remaining $${expectedTotal - paidAmount} at checkout. Continue?`)) {
+          return
+        }
+      }
+      
+      // Update booking status
       const updatedBookings = bookings.map(b => 
         b.id === foundBooking.id 
           ? { ...b, status: 'checked_in' as const }
@@ -76,7 +101,7 @@ export default function EmployeeCheckInOut({
       )
       setBookings(updatedBookings)
       
-      // Create renting record
+      // Create renting record with payment info
       const newRenting: Renting = {
         id: Date.now(),
         bookingId: foundBooking.id,
@@ -85,19 +110,49 @@ export default function EmployeeCheckInOut({
         hotelId: foundBooking.hotelId,
         startDate: foundBooking.startDate,
         endDate: foundBooking.endDate,
-        totalPrice: foundBooking.totalPrice,
-        paymentStatus: 'pending',
+        totalPrice: expectedTotal,
+        amountPaid: paidAmount,
+        remainingBalance: expectedTotal - paidAmount,
+        paymentStatus: paidAmount >= expectedTotal ? 'paid' : 'partial',
+        paymentMethod: checkinPayment.method,
+        paymentDate: new Date(),
+        paymentDetails: {
+          cardLast4: checkinPayment.cardNumber ? checkinPayment.cardNumber.slice(-4) : undefined,
+          cardholderName: checkinPayment.cardholderName
+        }
       }
       setRentings(prev => [...prev, newRenting])
       
-      alert(`Guest checked in successfully! Payment will be collected at checkout.`)
+      alert(`Check-in completed! ${paidAmount >= expectedTotal ? 'Full payment' : `Partial payment of $${paidAmount}`} received. Remaining balance: $${expectedTotal - paidAmount}`)
+      
+      // Reset form
       setFoundBooking(null)
       setSearchValue('')
+      setCheckinPayment({
+        amount: '',
+        method: 'credit_card',
+        cardNumber: '',
+        cardExpiry: '',
+        cardCvv: '',
+        cardholderName: ''
+      })
+    } else {
+      alert('Please enter payment amount')
     }
   }
   
   const handleCheckOut = () => {
     if (foundBooking && paymentAmount) {
+      // Find the renting record
+      const renting = rentings.find(r => r.bookingId === foundBooking.id)
+      const remainingBalance = renting?.remainingBalance || foundBooking.totalPrice
+      const paidAmount = parseFloat(paymentAmount)
+      
+      if (paidAmount < remainingBalance) {
+        alert(`Error: Payment amount $${paidAmount} is less than remaining balance $${remainingBalance}`)
+        return
+      }
+      
       const updatedBookings = bookings.map(b => 
         b.id === foundBooking.id 
           ? { ...b, status: 'checked_out' as const }
@@ -105,22 +160,25 @@ export default function EmployeeCheckInOut({
       )
       setBookings(updatedBookings)
       
-      // Update renting with payment
+      // Update renting with final payment
       setRentings(prev => prev.map(r => 
         r.bookingId === foundBooking.id
           ? { 
               ...r, 
               paymentStatus: 'paid', 
               paymentDate: new Date(),
-              totalPrice: parseFloat(paymentAmount)
+              totalPaid: (r.amountPaid || 0) + paidAmount,
+              remainingBalance: 0
             }
           : r
       ))
       
-      alert(`Checkout completed! Payment of $${paymentAmount} received via ${paymentMethod}.`)
+      alert(`Checkout completed! Final payment of $${paymentAmount} received via ${paymentMethod}.`)
       setFoundBooking(null)
       setSearchValue('')
       setPaymentAmount('')
+    } else {
+      alert('Please enter payment amount')
     }
   }
   
@@ -134,6 +192,11 @@ export default function EmployeeCheckInOut({
     const room = rooms.find(r => r.id === parseInt(directRentForm.roomId))
     const totalPrice = (room?.price || 0) * nights
     
+    if (nights <= 0) {
+      alert('Invalid date range')
+      return
+    }
+    
     const newRenting: Renting = {
       id: Date.now(),
       customerId: parseInt(directRentForm.customerId),
@@ -142,19 +205,30 @@ export default function EmployeeCheckInOut({
       startDate: new Date(directRentForm.startDate),
       endDate: new Date(directRentForm.endDate),
       totalPrice: totalPrice,
+      amountPaid: totalPrice,
+      remainingBalance: 0,
       paymentStatus: 'paid',
-      paymentDate: new Date()
+      paymentMethod: directRentForm.paymentMethod,
+      paymentDate: new Date(),
+      paymentDetails: {
+        cardLast4: directRentForm.cardNumber ? directRentForm.cardNumber.slice(-4) : undefined,
+        cardholderName: directRentForm.cardholderName
+      }
     }
     
     setRentings(prev => [...prev, newRenting])
-    alert(`Direct rental created! Payment of $${totalPrice} processed.`)
+    alert(`Direct rental created! Full payment of $${totalPrice} processed.`)
     
     setDirectRentForm({
       customerId: '',
       roomId: '',
       startDate: '',
       endDate: '',
-      paymentAmount: ''
+      paymentMethod: 'credit_card',
+      cardNumber: '',
+      cardExpiry: '',
+      cardCvv: '',
+      cardholderName: ''
     })
     setActionType('checkin')
   }
@@ -168,6 +242,13 @@ export default function EmployeeCheckInOut({
     b.status === 'checked_in' && 
     new Date(b.endDate).toDateString() === new Date().toDateString()
   )
+  
+  // Helper to format card number with spaces
+  const formatCardNumber = (value: string) => {
+    const cleaned = value.replace(/\D/g, '')
+    const groups = cleaned.match(/.{1,4}/g)
+    return groups ? groups.join(' ') : cleaned
+  }
   
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -288,19 +369,117 @@ export default function EmployeeCheckInOut({
                               </p>
                             </div>
                             <div>
-                              <p className="text-sm text-gray-600">Total</p>
+                              <p className="text-sm text-gray-600">Total Amount</p>
                               <p className="font-bold text-green-600">${foundBooking.totalPrice}</p>
                             </div>
                           </div>
                           
-                          {actionType === 'checkout' && (
+                          {actionType === 'checkin' && foundBooking.status === 'confirmed' && (
                             <div className="mt-4 p-4 bg-yellow-50 rounded-lg">
-                              <label className="block text-sm font-medium text-gray-700 mb-2">Payment Amount</label>
+                              <h4 className="font-semibold text-gray-900 mb-3">Payment Collection (Check-in)</h4>
+                              <div className="space-y-3">
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700 mb-1">Payment Amount *</label>
+                                  <input
+                                    type="number"
+                                    value={checkinPayment.amount}
+                                    onChange={(e) => setCheckinPayment({...checkinPayment, amount: e.target.value})}
+                                    placeholder={`Enter amount (Total: $${foundBooking.totalPrice})`}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                  />
+                                  <p className="text-xs text-gray-500 mt-1">
+                                    Can accept full or partial payment. Remaining balance will be collected at checkout.
+                                  </p>
+                                </div>
+                                
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700 mb-1">Payment Method</label>
+                                  <select
+                                    value={checkinPayment.method}
+                                    onChange={(e) => setCheckinPayment({...checkinPayment, method: e.target.value})}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                  >
+                                    <option value="credit_card">Credit Card</option>
+                                    <option value="debit_card">Debit Card</option>
+                                    <option value="cash">Cash</option>
+                                    <option value="gift_card">Gift Card</option>
+                                  </select>
+                                </div>
+                                
+                                {(checkinPayment.method === 'credit_card' || checkinPayment.method === 'debit_card') && (
+                                  <div className="space-y-3 border-t pt-3 mt-2">
+                                    <h5 className="text-sm font-medium text-gray-700">Card Details</h5>
+                                    <div>
+                                      <label className="block text-xs text-gray-600 mb-1">Card Number</label>
+                                      <input
+                                        type="text"
+                                        value={checkinPayment.cardNumber}
+                                        onChange={(e) => setCheckinPayment({...checkinPayment, cardNumber: e.target.value})}
+                                        placeholder="1234 5678 9012 3456"
+                                        maxLength={19}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                                      />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                      <div>
+                                        <label className="block text-xs text-gray-600 mb-1">Expiry Date</label>
+                                        <input
+                                          type="text"
+                                          value={checkinPayment.cardExpiry}
+                                          onChange={(e) => setCheckinPayment({...checkinPayment, cardExpiry: e.target.value})}
+                                          placeholder="MM/YY"
+                                          maxLength={5}
+                                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                                        />
+                                      </div>
+                                      <div>
+                                        <label className="block text-xs text-gray-600 mb-1">CVV</label>
+                                        <input
+                                          type="text"
+                                          value={checkinPayment.cardCvv}
+                                          onChange={(e) => setCheckinPayment({...checkinPayment, cardCvv: e.target.value})}
+                                          placeholder="123"
+                                          maxLength={4}
+                                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                                        />
+                                      </div>
+                                    </div>
+                                    <div>
+                                      <label className="block text-xs text-gray-600 mb-1">Cardholder Name</label>
+                                      <input
+                                        type="text"
+                                        value={checkinPayment.cardholderName}
+                                        onChange={(e) => setCheckinPayment({...checkinPayment, cardholderName: e.target.value})}
+                                        placeholder="Name on card"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                                      />
+                                    </div>
+                                  </div>
+                                )}
+                                
+                                <button
+                                  onClick={handleCheckInWithPayment}
+                                  disabled={!checkinPayment.amount}
+                                  className={`w-full mt-4 py-3 rounded-md font-semibold ${
+                                    checkinPayment.amount
+                                      ? 'bg-green-600 text-white hover:bg-green-700'
+                                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                  }`}
+                                >
+                                  Process Check-In & Payment
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                          
+                          {actionType === 'checkout' && foundBooking.status === 'checked_in' && (
+                            <div className="mt-4 p-4 bg-yellow-50 rounded-lg">
+                              <label className="block text-sm font-medium text-gray-700 mb-2">Final Payment Amount</label>
                               <input
                                 type="number"
                                 value={paymentAmount}
                                 onChange={(e) => setPaymentAmount(e.target.value)}
-                                placeholder="Enter amount"
+                                placeholder="Enter remaining balance"
                                 className="w-full px-3 py-2 border border-gray-300 rounded-md mb-2"
                               />
                               <label className="block text-sm font-medium text-gray-700 mb-2">Payment Method</label>
@@ -314,30 +493,18 @@ export default function EmployeeCheckInOut({
                                 <option value="cash">Cash</option>
                                 <option value="gift_card">Gift Card</option>
                               </select>
+                              <button
+                                onClick={handleCheckOut}
+                                disabled={!paymentAmount}
+                                className={`w-full mt-4 py-3 rounded-md font-semibold ${
+                                  paymentAmount
+                                    ? 'bg-blue-600 text-white hover:bg-blue-700'
+                                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                }`}
+                              >
+                                Process Check-Out & Final Payment
+                              </button>
                             </div>
-                          )}
-                          
-                          {actionType === 'checkin' && foundBooking.status === 'confirmed' && (
-                            <button
-                              onClick={handleCheckIn}
-                              className="w-full mt-4 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 font-semibold"
-                            >
-                              Confirm Check-In
-                            </button>
-                          )}
-                          
-                          {actionType === 'checkout' && foundBooking.status === 'checked_in' && (
-                            <button
-                              onClick={handleCheckOut}
-                              disabled={!paymentAmount}
-                              className={`w-full mt-4 py-3 rounded-md font-semibold ${
-                                paymentAmount
-                                  ? 'bg-blue-600 text-white hover:bg-blue-700'
-                                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                              }`}
-                            >
-                              Process Check-Out & Payment
-                            </button>
                           )}
                         </div>
                       )
@@ -412,8 +579,8 @@ export default function EmployeeCheckInOut({
                     <label className="block text-sm font-medium text-gray-700 mb-2">Payment Method *</label>
                     <select
                       required
-                      value={paymentMethod}
-                      onChange={(e) => setPaymentMethod(e.target.value)}
+                      value={directRentForm.paymentMethod}
+                      onChange={(e) => setDirectRentForm({...directRentForm, paymentMethod: e.target.value})}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md"
                     >
                       <option value="credit_card">Credit Card</option>
@@ -421,6 +588,57 @@ export default function EmployeeCheckInOut({
                       <option value="cash">Cash</option>
                     </select>
                   </div>
+                  
+                  {(directRentForm.paymentMethod === 'credit_card' || directRentForm.paymentMethod === 'debit_card') && (
+                    <div className="space-y-3 p-4 bg-gray-50 rounded-lg">
+                      <h4 className="text-sm font-semibold text-gray-700">Card Details</h4>
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-1">Card Number</label>
+                        <input
+                          type="text"
+                          value={directRentForm.cardNumber}
+                          onChange={(e) => setDirectRentForm({...directRentForm, cardNumber: e.target.value})}
+                          placeholder="1234 5678 9012 3456"
+                          maxLength={19}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">Expiry Date</label>
+                          <input
+                            type="text"
+                            value={directRentForm.cardExpiry}
+                            onChange={(e) => setDirectRentForm({...directRentForm, cardExpiry: e.target.value})}
+                            placeholder="MM/YY"
+                            maxLength={5}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">CVV</label>
+                          <input
+                            type="text"
+                            value={directRentForm.cardCvv}
+                            onChange={(e) => setDirectRentForm({...directRentForm, cardCvv: e.target.value})}
+                            placeholder="123"
+                            maxLength={4}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-1">Cardholder Name</label>
+                        <input
+                          type="text"
+                          value={directRentForm.cardholderName}
+                          onChange={(e) => setDirectRentForm({...directRentForm, cardholderName: e.target.value})}
+                          placeholder="Name on card"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                        />
+                      </div>
+                    </div>
+                  )}
                   
                   <button
                     type="submit"
@@ -452,7 +670,7 @@ export default function EmployeeCheckInOut({
                   }}>
                     <p className="font-medium text-gray-900">{customer?.firstName} {customer?.lastName}</p>
                     <p className="text-sm text-gray-600">Room {room?.roomNumber}</p>
-                    <p className="text-xs text-gray-500">ID: #{booking.id}</p>
+                    <p className="text-xs text-gray-500">Total: ${booking.totalPrice}</p>
                   </div>
                 )
               })}
@@ -470,6 +688,8 @@ export default function EmployeeCheckInOut({
               {todayCheckouts.map(booking => {
                 const customer = customers.find(c => c.id === booking.customerId)
                 const room = rooms.find(r => r.id === booking.roomId)
+                const renting = rentings.find(r => r.bookingId === booking.id)
+                const remainingBalance = renting?.remainingBalance || booking.totalPrice
                 return (
                   <div key={booking.id} className="p-3 bg-yellow-50 rounded-lg cursor-pointer hover:bg-yellow-100" onClick={() => {
                     setFoundBooking(booking)
@@ -478,7 +698,7 @@ export default function EmployeeCheckInOut({
                   }}>
                     <p className="font-medium text-gray-900">{customer?.firstName} {customer?.lastName}</p>
                     <p className="text-sm text-gray-600">Room {room?.roomNumber}</p>
-                    <p className="text-xs text-gray-500">ID: #{booking.id}</p>
+                    <p className="text-xs text-red-600">Remaining: ${remainingBalance}</p>
                   </div>
                 )
               })}

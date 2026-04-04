@@ -60,7 +60,7 @@ export const hotels: Hotel[] = [
 ]
 
 export const rooms: Room[] = [
-  { id: 1, hotelId: 1, roomNumber: '101', price: 450, amenities: ['TV', 'AC', 'Fridge', 'Mini Bar', 'WiFi'], capacity: 'single', view: 'city', isExtendable: false, hasDamage: false },
+  { id: 1, hotelId: 1, roomNumber: '101', price: 450, amenities: ['TV', 'AC', 'Fridge', 'Mini Bar', 'WiFi'], capacity: 'single', view: 'city', isExtendable: false, hasDamage: true, damageDescription: 'Someone robbed this room' },
   { id: 2, hotelId: 1, roomNumber: '102', price: 550, amenities: ['TV', 'AC', 'Fridge', 'Mini Bar', 'WiFi', 'Jacuzzi'], capacity: 'double', view: 'city', isExtendable: true, hasDamage: false },
   { id: 3, hotelId: 1, roomNumber: '201', price: 650, amenities: ['TV', 'AC', 'Fridge', 'Mini Bar', 'WiFi', 'Ocean View'], capacity: 'double', view: 'sea', isExtendable: true, hasDamage: false },
   { id: 4, hotelId: 1, roomNumber: '202', price: 750, amenities: ['TV', 'AC', 'Fridge', 'Mini Bar', 'WiFi', 'Ocean View', 'Balcony'], capacity: 'triple', view: 'sea', isExtendable: true, hasDamage: false },
@@ -100,11 +100,215 @@ export const employees: Employee[] = [
   { id: 12, firstName: 'Nancy', lastName: 'King', email: 'nancy.k@sunsetresorts.com', address: '1200 Universal, Orlando', sin: 'SIN012', hotelId: 12, role: 'Hotel Manager', isManager: true }
 ]
 
+const today = new Date()
+const tomorrow = new Date(today)
+tomorrow.setDate(today.getDate() + 1)
+
+const twoDaysLater = new Date(today)
+twoDaysLater.setDate(today.getDate() + 2)
+
+const threeDaysLater = new Date(today)
+threeDaysLater.setDate(today.getDate() + 3)
+
+const fiveDaysLater = new Date(today)
+fiveDaysLater.setDate(today.getDate() + 5)
+
+const nextWeek = new Date(today)
+nextWeek.setDate(today.getDate() + 7)
+
+const lastWeek = new Date(today)
+lastWeek.setDate(today.getDate() - 7)
+
 export const bookings: Booking[] = [
-  { id: 1, customerId: 1, roomId: 3, hotelId: 1, startDate: new Date('2025-03-15'), endDate: new Date('2025-03-20'), status: 'confirmed', totalPrice: 3250, bookingDate: new Date('2025-02-01') },
-  { id: 2, customerId: 2, roomId: 7, hotelId: 4, startDate: new Date('2025-04-10'), endDate: new Date('2025-04-15'), status: 'pending', totalPrice: 1100, bookingDate: new Date('2025-02-05') },
-  { id: 3, customerId: 3, roomId: 12, hotelId: 7, startDate: new Date('2025-05-01'), endDate: new Date('2025-05-07'), status: 'confirmed', totalPrice: 2700, bookingDate: new Date('2025-02-10') },
-  { id: 4, customerId: 4, roomId: 13, hotelId: 11, startDate: new Date('2025-06-15'), endDate: new Date('2025-06-22'), status: 'pending', totalPrice: 3850, bookingDate: new Date('2025-02-15') }
+  // TODAY'S CHECK-INS (Status: confirmed, startDate = today)
+  {
+    id: 1,
+    customerId: 1,
+    roomId: 3,
+    hotelId: 1,
+    startDate: today,
+    endDate: threeDaysLater,
+    status: 'confirmed',
+    totalPrice: 1950, // 3 nights * $650
+    bookingDate: new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000) // Booked 7 days ago
+  },
+  {
+    id: 2,
+    customerId: 2,
+    roomId: 7,
+    hotelId: 4,
+    startDate: today,
+    endDate: twoDaysLater,
+    status: 'confirmed',
+    totalPrice: 440, // 2 nights * $220
+    bookingDate: new Date(today.getTime() - 3 * 24 * 60 * 60 * 1000) // Booked 3 days ago
+  },
+  {
+    id: 3,
+    customerId: 3,
+    roomId: 11,
+    hotelId: 7,
+    startDate: today,
+    endDate: fiveDaysLater,
+    status: 'confirmed',
+    totalPrice: 1900, // 5 nights * $380
+    bookingDate: new Date(today.getTime() - 10 * 24 * 60 * 60 * 1000) // Booked 10 days ago
+  },
+  {
+    id: 4,
+    customerId: 4,
+    roomId: 14,
+    hotelId: 11,
+    startDate: today,
+    endDate: tomorrow,
+    status: 'confirmed',
+    totalPrice: 650, // 1 night * $650
+    bookingDate: new Date(today.getTime() - 2 * 24 * 60 * 60 * 1000) // Booked 2 days ago
+  },
+  
+  // TOMORROW'S CHECK-INS (Status: confirmed, startDate = tomorrow)
+  {
+    id: 5,
+    customerId: 5,
+    roomId: 2,
+    hotelId: 1,
+    startDate: tomorrow,
+    endDate: threeDaysLater,
+    status: 'confirmed',
+    totalPrice: 1100, // 2 nights * $550
+    bookingDate: new Date(today.getTime() - 5 * 24 * 60 * 60 * 1000) // Booked 5 days ago
+  },
+  {
+    id: 6,
+    customerId: 1,
+    roomId: 9,
+    hotelId: 4,
+    startDate: tomorrow,
+    endDate: fiveDaysLater,
+    status: 'confirmed',
+    totalPrice: 1200, // 4 nights * $300
+    bookingDate: new Date(today.getTime() - 8 * 24 * 60 * 60 * 1000) // Booked 8 days ago
+  },
+  
+  // CURRENT ACTIVE STAYS (Status: checked_in)
+  {
+    id: 7,
+    customerId: 2,
+    roomId: 5,
+    hotelId: 1,
+    startDate: new Date(today.getTime() - 2 * 24 * 60 * 60 * 1000), // 2 days ago
+    endDate: tomorrow,
+    status: 'checked_in',
+    totalPrice: 1700, // 2 nights * $850
+    bookingDate: new Date(today.getTime() - 14 * 24 * 60 * 60 * 1000) // Booked 14 days ago
+  },
+  {
+    id: 8,
+    customerId: 3,
+    roomId: 12,
+    hotelId: 7,
+    startDate: new Date(today.getTime() - 1 * 24 * 60 * 60 * 1000), // 1 day ago
+    endDate: twoDaysLater,
+    status: 'checked_in',
+    totalPrice: 900, // 2 nights * $450
+    bookingDate: new Date(today.getTime() - 6 * 24 * 60 * 60 * 1000) // Booked 6 days ago
+  },
+  
+  // PAST COMPLETED STAYS (Status: checked_out)
+  {
+    id: 9,
+    customerId: 4,
+    roomId: 1,
+    hotelId: 1,
+    startDate: new Date(today.getTime() - 10 * 24 * 60 * 60 * 1000), // 10 days ago
+    endDate: new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000), // 7 days ago
+    status: 'checked_out',
+    totalPrice: 1350, // 3 nights * $450
+    bookingDate: new Date(today.getTime() - 20 * 24 * 60 * 60 * 1000) // Booked 20 days ago
+  },
+  {
+    id: 10,
+    customerId: 5,
+    roomId: 6,
+    hotelId: 4,
+    startDate: new Date(today.getTime() - 5 * 24 * 60 * 60 * 1000), // 5 days ago
+    endDate: new Date(today.getTime() - 3 * 24 * 60 * 60 * 1000), // 3 days ago
+    status: 'checked_out',
+    totalPrice: 360, // 2 nights * $180
+    bookingDate: new Date(today.getTime() - 15 * 24 * 60 * 60 * 1000) // Booked 15 days ago
+  },
+  
+  // FUTURE BOOKINGS (Status: confirmed, future dates)
+  {
+    id: 11,
+    customerId: 1,
+    roomId: 4,
+    hotelId: 1,
+    startDate: nextWeek,
+    endDate: new Date(nextWeek.getTime() + 3 * 24 * 60 * 60 * 1000),
+    status: 'confirmed',
+    totalPrice: 3000, // 4 nights * $750
+    bookingDate: new Date(today.getTime() - 3 * 24 * 60 * 60 * 1000) // Booked 3 days ago
+  },
+  {
+    id: 12,
+    customerId: 2,
+    roomId: 10,
+    hotelId: 7,
+    startDate: new Date(today.getTime() + 14 * 24 * 60 * 60 * 1000), // 14 days from now
+    endDate: new Date(today.getTime() + 18 * 24 * 60 * 60 * 1000),
+    status: 'confirmed',
+    totalPrice: 1280, // 4 nights * $320
+    bookingDate: new Date(today.getTime() - 1 * 24 * 60 * 60 * 1000) // Booked 1 day ago
+  },
+  
+  // PENDING BOOKINGS (Awaiting employee confirmation)
+  {
+    id: 13,
+    customerId: 3,
+    roomId: 8,
+    hotelId: 4,
+    startDate: twoDaysLater,
+    endDate: fiveDaysLater,
+    status: 'pending',
+    totalPrice: 750, // 3 nights * $250
+    bookingDate: new Date() // Booked today
+  },
+  {
+    id: 14,
+    customerId: 4,
+    roomId: 15,
+    hotelId: 11,
+    startDate: threeDaysLater,
+    endDate: new Date(threeDaysLater.getTime() + 4 * 24 * 60 * 60 * 1000),
+    status: 'pending',
+    totalPrice: 3000, // 4 nights * $750
+    bookingDate: new Date(today.getTime() - 1 * 24 * 60 * 60 * 1000) // Booked yesterday
+  },
+  {
+    id: 15,
+    customerId: 5,
+    roomId: 13,
+    hotelId: 11,
+    startDate: nextWeek,
+    endDate: new Date(nextWeek.getTime() + 2 * 24 * 60 * 60 * 1000),
+    status: 'pending',
+    totalPrice: 1100, // 2 nights * $550
+    bookingDate: new Date(today.getTime() - 2 * 24 * 60 * 60 * 1000) // Booked 2 days ago
+  },
+  
+  // CANCELLED BOOKINGS
+  {
+    id: 16,
+    customerId: 1,
+    roomId: 2,
+    hotelId: 1,
+    startDate: new Date(today.getTime() + 10 * 24 * 60 * 60 * 1000),
+    endDate: new Date(today.getTime() + 12 * 24 * 60 * 60 * 1000),
+    status: 'cancelled',
+    totalPrice: 1100,
+    bookingDate: new Date(today.getTime() - 5 * 24 * 60 * 60 * 1000) // Booked 5 days ago, cancelled 3 days ago
+  }
 ]
 
 

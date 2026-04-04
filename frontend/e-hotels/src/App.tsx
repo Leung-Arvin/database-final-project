@@ -12,7 +12,6 @@ import EmployeeRooms from './pages/employee/Rooms'
 import EmployeeCustomers from './pages/employee/Customers'
 import EmployeeStaff from './pages/employee/Staff'
 import EmployeeReports from './pages/employee/Reports'
-import EmployeeHotelChains from './pages/employee/HotelChains'
 import EmployeeHotels from './pages/employee/Hotels'
 import { 
   hotelChains as initialHotelChains, 
@@ -81,12 +80,6 @@ function App() {
                   bookings={bookings}
                   employees={employees}
                   rentings={rentings}
-                />
-              } />
-              <Route path="/employee/hotel-chains" element={
-                <EmployeeHotelChains 
-                  hotelChains={hotelChains}
-                  setHotelChains={setHotelChains}
                 />
               } />
               <Route path="/employee/hotels" element={

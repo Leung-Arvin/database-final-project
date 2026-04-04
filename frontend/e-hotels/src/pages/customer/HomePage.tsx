@@ -33,11 +33,6 @@ export default function CustomerHomePage({
     return new Date(Date.UTC(year, month - 1, day))
   }
   
-  // Helper function to format date for comparison (YYYY-MM-DD)
-  const formatDateForComparison = (date: Date): string => {
-    return date.toISOString().split('T')[0]
-  }
-  
   // Helper function to get today's date in YYYY-MM-DD format
   const getTodayString = (): string => {
     const today = new Date()
@@ -47,7 +42,7 @@ export default function CustomerHomePage({
     return `${year}-${month}-${day}`
   }
   
-  // Validate dates (using UTC to avoid timezone issues)
+  // Validate dates
   const validateDates = (startDateStr: string, endDateStr: string): boolean => {
     if (!startDateStr || !endDateStr) {
       setDateError('')
@@ -108,7 +103,7 @@ export default function CustomerHomePage({
   const categories = Array.from(new Set(hotels.map(h => h.category))).sort()
   const capacities = ['single', 'double', 'triple', 'quad']
   
-  // Handle date changes in search criteria
+  // Handle date changes
   const handleDateChange = (type: 'start' | 'end', value: string) => {
     const newStartDate = type === 'start' ? value : criteria.startDate
     const newEndDate = type === 'end' ? value : criteria.endDate
@@ -121,7 +116,7 @@ export default function CustomerHomePage({
     validateDates(newStartDate, newEndDate)
   }
   
-  // Real-time search - updates as any criteria changes
+  // Real-time search - Keep damaged rooms but show them with warning
   useEffect(() => {
     let filtered = [...rooms]
     
@@ -181,11 +176,13 @@ export default function CustomerHomePage({
       filtered = filtered.filter(r => r.price <= parseInt(criteria.maxPrice))
     }
     
-    // Filter by date availability
+    // Filter by date availability (only for non-damaged rooms)
     if (criteria.startDate && criteria.endDate && validateDates(criteria.startDate, criteria.endDate)) {
-      filtered = filtered.filter(room => 
-        isRoomAvailable(room.id, criteria.startDate, criteria.endDate)
-      )
+      filtered = filtered.filter(room => {
+        // If room is damaged, don't filter by date (but will be disabled for booking)
+        if (room.hasDamage) return true
+        return isRoomAvailable(room.id, criteria.startDate, criteria.endDate)
+      })
     }
     
     setFilteredRooms(filtered)
@@ -214,7 +211,12 @@ export default function CustomerHomePage({
   }
   
   const handleBookRoom = (room: Room) => {
-    // Validate dates before allowing booking
+    // Check if room is damaged
+    if (room.hasDamage) {
+      alert(`This room is currently under maintenance: ${room.damageDescription || 'Issue reported'}. Please choose another room.`)
+      return
+    }
+    
     if (!criteria.startDate || !criteria.endDate) {
       alert('Please select both check-in and check-out dates before booking')
       return
@@ -225,7 +227,6 @@ export default function CustomerHomePage({
       return
     }
     
-    // Check availability again
     if (!isRoomAvailable(room.id, criteria.startDate, criteria.endDate)) {
       alert('This room is no longer available for the selected dates.')
       return
@@ -252,7 +253,6 @@ export default function CustomerHomePage({
   const handleConfirmBooking = (e: React.FormEvent) => {
     e.preventDefault()
     
-    // Re-validate dates on confirmation
     if (!validateDates(bookingDates.startDate, bookingDates.endDate)) {
       alert(dateError)
       return
@@ -267,7 +267,13 @@ export default function CustomerHomePage({
     
     const totalPrice = (selectedRoom?.price || 0) * nights
     
-    // Check if room is still available for these dates
+    // Final check - make sure room isn't damaged
+    if (selectedRoom?.hasDamage) {
+      alert(`Sorry, this room is now under maintenance: ${selectedRoom.damageDescription || 'Issue reported'}. Please choose another room.`)
+      setShowBookingModal(false)
+      return
+    }
+    
     if (!isRoomAvailable(selectedRoom!.id, bookingDates.startDate, bookingDates.endDate)) {
       alert('Sorry, this room is no longer available for the selected dates.')
       setShowBookingModal(false)
@@ -289,8 +295,6 @@ export default function CustomerHomePage({
     setBookings([...bookings, newBooking])
     alert(`Booking request submitted! The hotel will confirm your booking. You can pay upon check-in.`)
     setShowBookingModal(false)
-    
-    // Reset date filters after booking
     handleReset()
   }
   
@@ -304,7 +308,9 @@ export default function CustomerHomePage({
     return getTodayString()
   }
   
-  const isBookingDisabled = () => {
+  const isBookingDisabled = (room: Room) => {
+    // Disable booking if room is damaged OR dates are invalid
+    if (room.hasDamage) return true
     return !criteria.startDate || 
            !criteria.endDate || 
            !!dateError || 
@@ -325,7 +331,7 @@ export default function CustomerHomePage({
         </p>
       </div>
       
-      {/* Search Form with All Criteria */}
+      {/* Search Form */}
       <div className="bg-white rounded-lg shadow-md p-6 mb-8">
         <h2 className="text-xl font-semibold text-gray-900 mb-4">Search Available Rooms</h2>
         <p className="text-sm text-gray-600 mb-4">Results update automatically as you change any criteria</p>
@@ -501,7 +507,7 @@ export default function CustomerHomePage({
       {/* Results Count */}
       <div className="mb-4">
         <p className="text-gray-600">
-          Found <span className="font-bold text-blue-600">{filteredRooms.length}</span> available rooms
+          Found <span className="font-bold text-blue-600">{filteredRooms.length}</span> rooms
         </p>
         {criteria.startDate && criteria.endDate && !dateError && nights > 0 && (
           <p className="text-sm text-green-600 mt-1">
@@ -510,14 +516,14 @@ export default function CustomerHomePage({
         )}
       </div>
       
-      {/* Room Results */}
+      {/* Room Results - Show all rooms with damage description on cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredRooms.map((room) => {
           const hotel = hotels.find(h => h.id === room.hotelId)!
           const totalPrice = nights * room.price
           
           return (
-            <div key={room.id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
+            <div key={room.id} className={`bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow ${room.hasDamage ? 'border-l-4 border-red-500' : ''}`}>
               <div className="p-6">
                 <div className="flex justify-between items-start mb-4">
                   <div>
@@ -533,7 +539,7 @@ export default function CustomerHomePage({
                   <div className="text-right">
                     <p className="text-2xl font-bold text-blue-600">${room.price}</p>
                     <p className="text-xs text-gray-500">/night</p>
-                    {nights > 0 && !dateError && (
+                    {nights > 0 && !dateError && !room.hasDamage && (
                       <p className="text-sm font-semibold text-green-600 mt-2">
                         Total: ${totalPrice}
                       </p>
@@ -557,6 +563,19 @@ export default function CustomerHomePage({
                   )}
                 </div>
                 
+                {/* Damage Description - Show if room has damage */}
+                {room.hasDamage && room.damageDescription && (
+                  <div className="mb-4 p-3 bg-red-50 border-l-4 border-red-500 rounded">
+                    <div className="flex items-start gap-2">
+                      <span className="text-red-500">⚠️</span>
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold text-red-800">Under Maintenance</p>
+                        <p className="text-xs text-red-700 mt-1">{room.damageDescription}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
                 <div className="mb-4">
                   <p className="text-xs text-gray-500 mb-2">Amenities:</p>
                   <div className="flex flex-wrap gap-1">
@@ -571,20 +590,22 @@ export default function CustomerHomePage({
                 
                 <button
                   onClick={() => handleBookRoom(room)}
-                  disabled={isBookingDisabled()}
+                  disabled={isBookingDisabled(room)}
                   className={`w-full py-2 rounded-md transition-colors ${
-                    !isBookingDisabled()
+                    !isBookingDisabled(room)
                       ? 'bg-blue-600 text-white hover:bg-blue-700'
                       : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                   }`}
                 >
-                  {!criteria.startDate || !criteria.endDate 
-                    ? 'Select Dates First' 
-                    : dateError 
-                      ? 'Invalid Dates' 
-                      : nights <= 0
-                        ? 'Invalid Date Range'
-                        : 'Book Now'}
+                  {room.hasDamage 
+                    ? '⚠️ Under Maintenance' 
+                    : !criteria.startDate || !criteria.endDate 
+                      ? 'Select Dates First' 
+                      : dateError 
+                        ? 'Invalid Dates' 
+                        : nights <= 0
+                          ? 'Invalid Date Range'
+                          : 'Book Now'}
                 </button>
               </div>
             </div>

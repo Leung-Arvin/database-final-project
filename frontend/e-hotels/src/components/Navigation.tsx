@@ -17,9 +17,8 @@ export default function Navigation({ userRole, setUserRole }: NavigationProps) {
   
   const employeeNavItems = [
     { href: '/employee/dashboard', label: 'Dashboard' },
-    { href: '/employee/hotel-chains', label: 'Hotel Chains' },  // NEW
-    { href: '/employee/hotels', label: 'Hotels' },               // NEW
-    { href: '/employee/rooms', label: 'Rooms' },                 // Keep
+    { href: '/employee/hotels', label: 'Hotels' },               
+    { href: '/employee/rooms', label: 'Rooms' },                 
     { href: '/employee/bookings', label: 'Manage Bookings' },
     { href: '/employee/check-in', label: 'Check-In/Out' },
     { href: '/employee/customers', label: 'Customers' },
