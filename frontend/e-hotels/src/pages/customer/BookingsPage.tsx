@@ -1,16 +1,15 @@
 // src/pages/customer/BookingsPage.tsx
 import { useState } from 'react'
 import type { Booking, Hotel, Room } from '../../types'
-import { Link } from 'react-router-dom'
-
 
 interface CustomerBookingsPageProps {
   bookings: Booking[]
   hotels: Hotel[]
   rooms: Room[]
+  setBookings: React.Dispatch<React.SetStateAction<Booking[]>>
 }
 
-export default function CustomerBookingsPage({ bookings, hotels, rooms }: CustomerBookingsPageProps) {
+export default function CustomerBookingsPage({ bookings, hotels, rooms, setBookings }: CustomerBookingsPageProps) {
   const [selectedStatus, setSelectedStatus] = useState('all')
   
   const filteredBookings = bookings.filter(booking => 
@@ -49,7 +48,22 @@ export default function CustomerBookingsPage({ bookings, hotels, rooms }: Custom
     }
   }
   
-  const upcomingBookings = bookings.filter(b => b.status === 'confirmed' && new Date(b.startDate) > new Date())
+  const handleCancelBooking = (bookingId: number) => {
+    if (confirm('Are you sure you want to cancel this booking?')) {
+      const updatedBookings = bookings.map(booking => 
+        booking.id === bookingId 
+          ? { ...booking, status: 'cancelled' as const }
+          : booking
+      )
+      setBookings(updatedBookings)
+      alert('Booking cancelled successfully.')
+    }
+  }
+  
+  const upcomingBookings = bookings.filter(b => 
+    (b.status === 'confirmed' || b.status === 'pending') && 
+    new Date(b.startDate) > new Date()
+  )
   const activeBookings = bookings.filter(b => b.status === 'checked_in')
   const pastBookings = bookings.filter(b => b.status === 'checked_out')
   
@@ -92,7 +106,7 @@ export default function CustomerBookingsPage({ bookings, hotels, rooms }: Custom
       
       {/* Status Filter */}
       <div className="mb-6 flex gap-2 flex-wrap">
-        {['all', 'confirmed', 'pending', 'checked_in', 'checked_out', 'cancelled'].map(status => (
+        {['all', 'pending', 'confirmed', 'checked_in', 'checked_out', 'cancelled'].map(status => (
           <button
             key={status}
             onClick={() => setSelectedStatus(status)}
@@ -111,11 +125,13 @@ export default function CustomerBookingsPage({ bookings, hotels, rooms }: Custom
       <div className="space-y-4">
         {filteredBookings.map((booking) => {
           const nights = Math.ceil((booking.endDate.getTime() - booking.startDate.getTime()) / (1000 * 60 * 60 * 24))
+          const canCancel = booking.status === 'pending' || booking.status === 'confirmed'
+          
           return (
             <div key={booking.id} className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
               <div className="flex flex-wrap justify-between items-start">
                 <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
+                  <div className="flex items-center gap-3 mb-2 flex-wrap">
                     <h3 className="text-lg font-semibold text-gray-900">{getHotelName(booking.hotelId)}</h3>
                     <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(booking.status)}`}>
                       <span>{getStatusIcon(booking.status)}</span>
@@ -125,7 +141,7 @@ export default function CustomerBookingsPage({ bookings, hotels, rooms }: Custom
                   
                   <p className="text-sm text-gray-600 mb-2">Room {getRoomNumber(booking.roomId)}</p>
                   
-                  <div className="flex items-center gap-4 text-sm text-gray-600 mb-3">
+                  <div className="flex items-center gap-4 text-sm text-gray-600 mb-3 flex-wrap">
                     <div className="flex items-center gap-1">
                       <span>📅</span>
                       <span>{booking.startDate.toLocaleDateString()} - {booking.endDate.toLocaleDateString()}</span>
@@ -140,27 +156,45 @@ export default function CustomerBookingsPage({ bookings, hotels, rooms }: Custom
                     </div>
                   </div>
                   
+                  {/* Status Messages */}
                   {booking.status === 'pending' && (
-                    <div className="flex gap-2">
-                      <button className="px-3 py-1 bg-green-600 text-white rounded-md text-sm hover:bg-green-700">
-                        Confirm Payment
-                      </button>
-                      <button className="px-3 py-1 bg-red-600 text-white rounded-md text-sm hover:bg-red-700">
-                        Cancel Booking
-                      </button>
+                    <div className="bg-yellow-50 rounded-lg p-3 mt-2">
+                      <p className="text-sm text-yellow-800">
+                        ⏳ Your booking is pending confirmation. The hotel will confirm your booking soon.
+                      </p>
                     </div>
                   )}
                   
                   {booking.status === 'confirmed' && (
+                    <div className="bg-green-50 rounded-lg p-3 mt-2">
+                      <p className="text-sm text-green-800">
+                        ✓ Booking confirmed! Please pay at the hotel upon check-in.
+                      </p>
+                    </div>
+                  )}
+                  
+                  {booking.status === 'checked_in' && (
                     <div className="bg-blue-50 rounded-lg p-3 mt-2">
                       <p className="text-sm text-blue-800">
-                        ✓ Booking confirmed! Check-in available from {booking.startDate.toLocaleDateString()}
+                        🏨 You are currently checked in. Payment will be processed at check-out.
                       </p>
+                    </div>
+                  )}
+                  
+                  {/* Cancel Button */}
+                  {canCancel && (
+                    <div className="flex gap-3 mt-4">
+                      <button
+                        onClick={() => handleCancelBooking(booking.id)}
+                        className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm"
+                      >
+                        Cancel Booking
+                      </button>
                     </div>
                   )}
                 </div>
                 
-                <div className="text-right">
+                <div className="text-right mt-4 md:mt-0">
                   <p className="text-sm text-gray-500">Booking #{booking.id}</p>
                   <p className="text-xs text-gray-400">Booked on {booking.bookingDate.toLocaleDateString()}</p>
                 </div>
@@ -173,9 +207,9 @@ export default function CustomerBookingsPage({ bookings, hotels, rooms }: Custom
           <div className="text-center py-12 bg-white rounded-lg shadow-md">
             <div className="text-6xl mb-4">📭</div>
             <p className="text-gray-500">No bookings found</p>
-            <Link to="/" className="inline-block mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+            <a href="/" className="inline-block mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
               Browse Hotels
-            </Link>
+            </a>
           </div>
         )}
       </div>

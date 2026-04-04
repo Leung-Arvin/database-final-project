@@ -287,7 +287,7 @@ export default function CustomerHomePage({
     }
     
     setBookings([...bookings, newBooking])
-    alert(`Booking confirmed! Total: $${totalPrice} for ${nights} night(s)`)
+    alert(`Booking request submitted! The hotel will confirm your booking. You can pay upon check-in.`)
     setShowBookingModal(false)
     
     // Reset date filters after booking
