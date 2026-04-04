@@ -1,18 +1,6 @@
 {
   "app": {
-    "[project]/database-final-project/frontend/hotel-app/src/app/bookings/page": [
-      "static/media/83afe278b6a6bb3c-s.p.0q-301v4kxxnr.woff2"
-    ],
-    "[project]/database-final-project/frontend/hotel-app/src/app/customers/page": [
-      "static/media/83afe278b6a6bb3c-s.p.0q-301v4kxxnr.woff2"
-    ],
-    "[project]/database-final-project/frontend/hotel-app/src/app/employees/page": [
-      "static/media/83afe278b6a6bb3c-s.p.0q-301v4kxxnr.woff2"
-    ],
-    "[project]/database-final-project/frontend/hotel-app/src/app/page": [
-      "static/media/83afe278b6a6bb3c-s.p.0q-301v4kxxnr.woff2"
-    ],
-    "[project]/database-final-project/frontend/hotel-app/src/app/views/page": [
+    "[project]/src/app/page": [
       "static/media/83afe278b6a6bb3c-s.p.0q-301v4kxxnr.woff2"
     ]
   },
