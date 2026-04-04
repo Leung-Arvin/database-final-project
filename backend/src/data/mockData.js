@@ -69,10 +69,34 @@ const rooms = [
     view_type: 'city',
     extendable: false,
   },
+  {
+    hotel_id: 2,
+    room_number: '202',
+    base_price: 220,
+    capacity: 'double',
+    view_type: 'city',
+    extendable: true,
+  },
 ];
 
-const roomAmenities = [];
-const roomProblems = [];
+const roomAmenities = [
+  { hotel_id: 1, room_number: '101', amenity: 'WiFi' },
+  { hotel_id: 1, room_number: '101', amenity: 'TV' },
+  { hotel_id: 1, room_number: '102', amenity: 'WiFi' },
+  { hotel_id: 2, room_number: '201', amenity: 'AC' },
+];
+
+const roomProblems = [
+  {
+    problem_id: 1,
+    hotel_id: 1,
+    room_number: '102',
+    description: 'Broken lamp',
+    reported_date: '2026-04-01',
+    resolved_date: null,
+  },
+];
+
 const bookings = [];
 const rentings = [];
 const customers = [];
