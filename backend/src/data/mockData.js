@@ -97,10 +97,49 @@ const roomProblems = [
   },
 ];
 
-const bookings = [];
-const rentings = [];
-const customers = [];
+const customers = [
+  {
+    customer_id: 1,
+    full_name: 'John Smith',
+    address: '12 Main Street, New York, NY',
+    id_type: 'SSN',
+    id_number: '111-22-3333',
+    registration_date: '2026-01-10',
+    email: 'john.smith@email.com',
+    phone: '555-111-2222',
+  },
+  {
+    customer_id: 2,
+    full_name: 'Alice Brown',
+    address: '45 King Street, Toronto, ON',
+    id_type: 'SIN',
+    id_number: '987654321',
+    registration_date: '2026-02-05',
+    email: 'alice.brown@email.com',
+    phone: '555-333-4444',
+  },
+];
+
 const employees = [];
+
+const bookings = [
+  {
+    booking_id: 1,
+    customer_id: 1,
+    hotel_id: 1,
+    room_number: '101',
+    hotel_name_snapshot: 'Luxury Hotels International - New York',
+    hotel_address_snapshot: '100 Broadway',
+    room_number_snapshot: '101',
+    start_date: '2026-04-20',
+    end_date: '2026-04-23',
+    booking_price: 750,
+    status: 'confirmed',
+    isDeleted: false,
+  },
+];
+
+const rentings = [];
 
 module.exports = {
   hotelChains,
