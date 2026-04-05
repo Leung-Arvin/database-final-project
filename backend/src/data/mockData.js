@@ -120,7 +120,30 @@ const customers = [
   },
 ];
 
-const employees = [];
+const employees = [
+  {
+    employee_id: 1,
+    hotel_id: 1,
+    full_name: 'Michael Manager',
+    address: '1 Manager St, New York, NY',
+    ssn_sin: '123456789',
+    role: 'manager',
+    email: 'michael.manager@luxuryhotels.com',
+    phone: '555-111-0000',
+    isManager: true,
+  },
+  {
+    employee_id: 4,
+    hotel_id: 2,
+    full_name: 'Sarah Clerk',
+    address: '2 Front St, Toronto, ON',
+    ssn_sin: '987654321',
+    role: 'clerk',
+    email: 'sarah.clerk@premierinn.com',
+    phone: '555-222-0000',
+    isManager: false,
+  },
+];
 
 const bookings = [
   {
@@ -128,18 +151,39 @@ const bookings = [
     customer_id: 1,
     hotel_id: 1,
     room_number: '101',
-    hotel_name_snapshot: 'Luxury Hotels International - New York',
+    hotel_name_snapshot: 'Luxury Hotels International - New York, NY',
     hotel_address_snapshot: '100 Broadway',
     room_number_snapshot: '101',
     start_date: '2026-04-20',
     end_date: '2026-04-23',
     booking_price: 750,
-    status: 'confirmed',
+    status: 'checked_in',
     isDeleted: false,
   },
 ];
 
-const rentings = [];
+const rentings = [
+  {
+    renting_id: 1,
+    customer_id: 1,
+    hotel_id: 1,
+    room_number: '101',
+    employee_id: 1,
+    booking_id: 1,
+    hotel_name_snapshot: 'Luxury Hotels International - New York, NY',
+    hotel_address_snapshot: '100 Broadway',
+    room_number_snapshot: '101',
+    check_in_date: '2026-04-20',
+    check_out_date: '2026-04-23',
+    actual_check_in: '2026-04-20T15:00:00.000Z',
+    actual_check_out: null,
+    price: 250,
+    total_amount: 750,
+    payment_method: 'credit_card',
+    payment_status: 'paid',
+    isDeleted: false,
+  },
+];
 
 module.exports = {
   hotelChains,

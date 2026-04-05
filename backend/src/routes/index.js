@@ -5,6 +5,7 @@ const hotelChainRoutes = require('./hotelChainRoutes');
 const hotelRoutes = require('./hotelRoutes');
 const roomRoutes = require('./roomRoutes');
 const bookingRoutes = require('./bookingRoutes');
+const rentingRoutes = require('./rentingRoutes');
 
 router.get('/test', (req, res) => {
   res.json({
@@ -17,5 +18,6 @@ router.use('/hotel-chains', hotelChainRoutes);
 router.use('/hotels', hotelRoutes);
 router.use('/rooms', roomRoutes);
 router.use('/bookings', bookingRoutes);
+router.use('/rentings', rentingRoutes);
 
 module.exports = router;
