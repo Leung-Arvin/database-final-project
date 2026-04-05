@@ -143,6 +143,17 @@ const employees = [
     phone: '555-222-0000',
     isManager: false,
   },
+  {
+    employee_id: 5,
+    hotel_id: 3,
+    full_name: 'David Manager',
+    address: '3 Albert St, Ottawa, ON',
+    ssn_sin: '456789123',
+    role: 'manager',
+    email: 'david.manager@premierinn.com',
+    phone: '555-333-0000',
+    isManager: true,
+  },
 ];
 
 const bookings = [
