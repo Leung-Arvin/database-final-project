@@ -196,6 +196,9 @@ const rentings = [
   },
 ];
 
+const archiveBookings = [];
+const archiveRentings = [];
+
 module.exports = {
   hotelChains,
   hotels,
@@ -206,4 +209,6 @@ module.exports = {
   rentings,
   customers,
   employees,
+  archiveBookings,
+  archiveRentings,
 };
