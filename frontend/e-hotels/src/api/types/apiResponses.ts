@@ -1,4 +1,3 @@
-// src/api/types/apiResponses.ts
 export interface ApiResponse<T = any> {
   success: boolean;
   data: T;
@@ -24,13 +23,27 @@ export interface ApiHotel {
   manager_employee_id: number | null;
 }
 
-export interface ApiRoom {
+/**
+ * Base Room entity shape, matching the Room relation in your schema.
+ */
+export interface ApiRoomBase {
   hotel_id: number;
   room_number: string;
   base_price: number;
   capacity: string;
   view_type: string;
   extendable: boolean;
+}
+
+/**
+ * Enriched room shape returned by the backend service layer.
+ * This matches what the UI can receive from room search/get endpoints.
+ */
+export interface ApiRoom extends ApiRoomBase {
+  amenities?: string[];
+  hasDamage?: boolean;
+  damageDescription?: string | null;
+  activeProblemId?: number | null;
 }
 
 export interface ApiCustomer {
@@ -92,6 +105,7 @@ export interface ApiRenting {
 
 // Request types
 export interface SearchRoomsRequest {
+  hotel_id?: number;
   start_date?: string;
   end_date?: string;
   capacity?: string;
@@ -142,17 +156,10 @@ export interface CreateHotelRequest {
   address: string;
   area: string;
   contact_email: string;
-  manager_employee_id?: number;
+  manager_employee_id?: number | null;
 }
 
-export interface CreateRoomRequest {
-  hotel_id: number;
-  room_number: string;
-  base_price: number;
-  capacity: string;
-  view_type: string;
-  extendable: boolean;
-}
+export interface CreateRoomRequest extends ApiRoomBase {}
 
 export interface CheckInRequest {
   booking_id: number;

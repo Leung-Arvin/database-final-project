@@ -1,6 +1,18 @@
 const roomRepository = require('../repositories/roomRepository');
 const hotelRepository = require('../repositories/hotelRepository');
 
+function enrichRoom(room) {
+  const activeProblem = roomRepository.getActiveProblem(room.hotel_id, room.room_number);
+
+  return {
+    ...room,
+    amenities: roomRepository.getAmenities(room.hotel_id, room.room_number),
+    hasDamage: !!activeProblem,
+    damageDescription: activeProblem?.description || null,
+    activeProblemId: activeProblem?.problem_id || null,
+  };
+}
+
 function getRoomByCompositeKey(hotelId, roomNumber) {
   const room = roomRepository.getByCompositeKey(hotelId, roomNumber);
 
@@ -10,12 +22,7 @@ function getRoomByCompositeKey(hotelId, roomNumber) {
     throw error;
   }
 
-  return {
-    ...room,
-    amenities: roomRepository.getAmenities(hotelId, roomNumber),
-    hasDamage: !!roomRepository.getActiveProblem(hotelId, roomNumber),
-    damageDescription: roomRepository.getActiveProblem(hotelId, roomNumber)?.description || null,
-  };
+  return enrichRoom(room);
 }
 
 function createRoom(data) {
@@ -89,14 +96,7 @@ function deleteRoom(hotelId, roomNumber) {
 
 function searchRooms(filters) {
   const rooms = roomRepository.search(filters);
-
-  return rooms.map((room) => ({
-    ...room,
-    amenities: roomRepository.getAmenities(room.hotel_id, room.room_number),
-    hasDamage: !!roomRepository.getActiveProblem(room.hotel_id, room.room_number),
-    damageDescription:
-      roomRepository.getActiveProblem(room.hotel_id, room.room_number)?.description || null,
-  }));
+  return rooms.map(enrichRoom);
 }
 
 function getAmenities(hotelId, roomNumber) {

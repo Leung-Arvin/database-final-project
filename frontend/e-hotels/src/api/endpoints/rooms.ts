@@ -1,28 +1,52 @@
 import axiosInstance from '../axiosConfig';
-import type { ApiResponse, ApiRoom, SearchRoomsRequest } from '../types/apiResponses';
+import type {
+  ApiResponse,
+  ApiRoom,
+  ApiRoomBase,
+  CreateRoomRequest,
+  SearchRoomsRequest,
+} from '../types/apiResponses';
 
 export const roomsApi = {
-  // Search available rooms
+  // Search rooms
   search: async (params: SearchRoomsRequest): Promise<ApiRoom[]> => {
-    const response = await axiosInstance.post<ApiResponse<ApiRoom[]>>('/rooms/search', params);
+    const response = await axiosInstance.post<ApiResponse<ApiRoom[]>>(
+      '/rooms/search',
+      params
+    );
     return response.data.data;
   },
 
   // Get room by composite key
-  getByCompositeKey: async (hotelId: number, roomNumber: string): Promise<ApiRoom> => {
-    const response = await axiosInstance.get<ApiResponse<ApiRoom>>(`/rooms/${hotelId}/${roomNumber}`);
+  getByCompositeKey: async (
+    hotelId: number,
+    roomNumber: string
+  ): Promise<ApiRoom> => {
+    const response = await axiosInstance.get<ApiResponse<ApiRoom>>(
+      `/rooms/${hotelId}/${roomNumber}`
+    );
     return response.data.data;
   },
 
   // Create new room
-  create: async (data: Omit<ApiRoom, 'amenities' | 'hasDamage' | 'damageDescription'>): Promise<ApiRoom> => {
-    const response = await axiosInstance.post<ApiResponse<ApiRoom>>('/rooms', data);
+  create: async (data: CreateRoomRequest): Promise<ApiRoom> => {
+    const response = await axiosInstance.post<ApiResponse<ApiRoom>>(
+      '/rooms',
+      data
+    );
     return response.data.data;
   },
 
   // Update room
-  update: async (hotelId: number, roomNumber: string, data: Partial<ApiRoom>): Promise<ApiRoom> => {
-    const response = await axiosInstance.put<ApiResponse<ApiRoom>>(`/rooms/${hotelId}/${roomNumber}`, data);
+  update: async (
+    hotelId: number,
+    roomNumber: string,
+    data: Partial<ApiRoomBase>
+  ): Promise<ApiRoom> => {
+    const response = await axiosInstance.put<ApiResponse<ApiRoom>>(
+      `/rooms/${hotelId}/${roomNumber}`,
+      data
+    );
     return response.data.data;
   },
 
@@ -32,24 +56,49 @@ export const roomsApi = {
   },
 
   // Get room amenities
-  getAmenities: async (hotelId: number, roomNumber: string): Promise<string[]> => {
-    const response = await axiosInstance.get<ApiResponse<string[]>>(`/rooms/${hotelId}/${roomNumber}/amenities`);
+  getAmenities: async (
+    hotelId: number,
+    roomNumber: string
+  ): Promise<string[]> => {
+    const response = await axiosInstance.get<ApiResponse<string[]>>(
+      `/rooms/${hotelId}/${roomNumber}/amenities`
+    );
     return response.data.data;
   },
 
   // Add amenity to room
-  addAmenity: async (hotelId: number, roomNumber: string, amenity: string): Promise<void> => {
-    await axiosInstance.post(`/rooms/${hotelId}/${roomNumber}/amenities`, { amenity });
+  addAmenity: async (
+    hotelId: number,
+    roomNumber: string,
+    amenity: string
+  ): Promise<void> => {
+    await axiosInstance.post(
+      `/rooms/${hotelId}/${roomNumber}/amenities`,
+      { amenity }
+    );
   },
 
   // Remove amenity from room
-  removeAmenity: async (hotelId: number, roomNumber: string, amenity: string): Promise<void> => {
-    await axiosInstance.delete(`/rooms/${hotelId}/${roomNumber}/amenities/${encodeURIComponent(amenity)}`);
+  removeAmenity: async (
+    hotelId: number,
+    roomNumber: string,
+    amenity: string
+  ): Promise<void> => {
+    await axiosInstance.delete(
+      `/rooms/${hotelId}/${roomNumber}/amenities/${encodeURIComponent(amenity)}`
+    );
   },
 
   // Report room problem
-  reportProblem: async (hotelId: number, roomNumber: string, description: string): Promise<void> => {
-    await axiosInstance.post(`/rooms/${hotelId}/${roomNumber}/problems`, { description });
+  reportProblem: async (
+    hotelId: number,
+    roomNumber: string,
+    description: string
+  ): Promise<void> => {
+    await axiosInstance.post(
+      `/rooms/${hotelId}/${roomNumber}/problems`,
+      { description }
+    );
   },
 
   // Resolve room problem
