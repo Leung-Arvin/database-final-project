@@ -2,10 +2,6 @@ node_modules/
 dist/
 build/
 
-*.sqlite
-*.db
-*.db-journal
-
 .DS_Store
 Thumbs.db
 
