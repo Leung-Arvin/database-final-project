@@ -15,7 +15,6 @@ export interface ApiHotelChain {
 export interface ApiHotel {
   hotel_id: number;
   chain_id: number;
-  chain_name: string;
   rating: number;
   address: string;
   area: string;
@@ -28,11 +27,11 @@ export interface ApiHotel {
  */
 export interface ApiRoomBase {
   hotel_id: number;
-  room_number: string;
+  room_number: number;
   base_price: number;
-  capacity: string;
-  view_type: string;
-  extendable: boolean;
+  capacity: number;
+  view_type: 'Sea' | 'Mountain';
+  extendable: boolean | number; // Might be able to be tightened to just boolean
 }
 
 /**
@@ -62,45 +61,47 @@ export interface ApiEmployee {
   hotel_id: number;
   full_name: string;
   address: string;
-  ssn_sin: string;
+  ssn_sin: number | string;
   role: string;
   email: string;
   phone: string;
-  isManager: boolean;
 }
 
 export interface ApiBooking {
   booking_id: number;
   customer_id: number;
-  hotel_id: number;
-  room_number: string;
-  hotel_name_snapshot: string;
-  hotel_address_snapshot: string;
-  room_number_snapshot: string;
+  hotel_id: number | null;
+  room_number: number | null;
+  hotel_name_snapshot: string | null;
+  hotel_address_snapshot: string | null;
+  room_number_snapshot: number | null;
   start_date: string;
   end_date: string;
+  checkin_time: string | null;
+  checkout_time: string | null;
   booking_price: number;
-  status: string;
-  isDeleted: boolean;
+  status: 'active' | 'cancelled' | 'converted_to_renting';
+  isDeleted: number;
 }
 
 export interface ApiRenting {
   renting_id: number;
   customer_id: number;
-  hotel_id: number;
-  room_number: string;
+  hotel_id: number | null;
+  room_number: number | null;
   employee_id: number;
   booking_id: number | null;
-  hotel_name_snapshot: string;
-  hotel_address_snapshot: string;
-  room_number_snapshot: string;
+  hotel_name_snapshot: string | null;
+  hotel_address_snapshot: string | null;
+  room_number_snapshot: number | null;
   check_in_date: string;
   check_out_date: string;
   actual_check_in: string | null;
   actual_check_out: string | null;
   price: number;
   total_amount: number;
-  isDeleted: boolean;
+  payment_method: string | null;
+  isDeleted: number;
 }
 
 // Request types
@@ -108,7 +109,7 @@ export interface SearchRoomsRequest {
   hotel_id?: number;
   start_date?: string;
   end_date?: string;
-  capacity?: string;
+  capacity?: number;
   area?: string;
   hotel_chain_id?: number;
   rating?: number;
@@ -119,7 +120,7 @@ export interface SearchRoomsRequest {
 export interface CreateBookingRequest {
   customer_id: number;
   hotel_id: number;
-  room_number: string;
+  room_number: number;
   start_date: string;
   end_date: string;
   booking_price: number;
@@ -141,8 +142,7 @@ export interface CreateEmployeeRequest {
   address: string;
   hotel_id: number;
   role: string;
-  ssn_sin: string;
-  isManager: boolean;
+  ssn_sin: number | string;
 }
 
 export interface CreateHotelChainRequest {
@@ -171,7 +171,7 @@ export interface CheckInRequest {
 export interface DirectRentRequest {
   customer_id: number;
   hotel_id: number;
-  room_number: string;
+  room_number: number;
   employee_id: number;
   start_date: string;
   end_date: string;
