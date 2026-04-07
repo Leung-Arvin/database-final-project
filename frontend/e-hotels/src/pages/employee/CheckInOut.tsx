@@ -38,6 +38,8 @@ export default function EmployeeCheckInOut() {
   const [bookingSearchResults, setBookingSearchResults] = useState<ApiBooking[]>([])
   const [rentingSearchResults, setRentingSearchResults] = useState<ApiRenting[]>([])
 
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState('')
+
   const [checkinPayment, setCheckinPayment] = useState({
     amount: '',
     method: 'credit_card',
@@ -59,7 +61,8 @@ export default function EmployeeCheckInOut() {
     cardholderName: '',
   })
 
-  const currentEmployee = employees[0] || null
+  const currentEmployee =
+    employees.find((employee) => employee.employee_id === Number(selectedEmployeeId)) || null
 
   const loadPageData = async () => {
     try {
@@ -488,6 +491,36 @@ export default function EmployeeCheckInOut() {
                 Direct Rental
               </button>
             </div>
+            
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Acting Employee *
+              </label>
+              <select
+                value={selectedEmployeeId}
+                onChange={(e) => setSelectedEmployeeId(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              >
+                <option value="">Select Employee</option>
+                {employees.map((employee) => {
+                  const hotel = hotels.find((h) => h.hotel_id === employee.hotel_id)
+
+                  return (
+                    <option key={employee.employee_id} value={employee.employee_id}>
+                      {employee.full_name} - {employee.role}
+                      {hotel ? ` - Hotel ${hotel.hotel_id} / ${hotel.area}` : ''}
+                      {` - ID ${employee.employee_id}`}
+                    </option>
+                  )
+                })}
+              </select>
+              {currentEmployee && (
+                <p className="text-xs text-gray-500 mt-2">
+                  Selected: {currentEmployee.full_name} — Hotel {currentEmployee.hotel_id}
+                </p>
+              )}
+            </div>
+
             {(actionType === 'checkin' || actionType === 'checkout') && (
               <>
                 <div className="mb-6">

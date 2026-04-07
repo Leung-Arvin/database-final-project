@@ -160,28 +160,6 @@ export default function EmployeeBookings() {
     }
   }
 
-  const handleConfirmBooking = async (booking: BookingUI) => {
-    try {
-      const updated = await bookingsApi.confirm(booking.id)
-
-      setBookings((prev) =>
-        prev.map((b) =>
-          b.id === booking.id
-            ? {
-                ...b,
-                status: updated.status,
-                raw: updated,
-              }
-            : b
-        )
-      )
-
-      alert(`Booking #${booking.id} confirmed`)
-    } catch (err: any) {
-      alert(err?.response?.data?.error || 'Failed to confirm booking')
-    }
-  }
-
   const stats = {
     total: bookings.length,
     active: bookings.filter((b) => b.status === 'active').length,
@@ -290,17 +268,6 @@ export default function EmployeeBookings() {
                 </Td>
                 <Td>
                   <div className="flex gap-2">
-                    <button
-                      onClick={() => handleConfirmBooking(booking)}
-                      disabled={booking.status !== 'active'}
-                      className={`px-3 py-1 rounded ${
-                        booking.status !== 'active'
-                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                          : 'bg-blue-100 text-blue-800 hover:bg-blue-200'
-                      }`}
-                    >
-                      Confirm
-                    </button>
                     <button
                       onClick={() => handleCancelBooking(booking)}
                       disabled={booking.status !== 'active'}
