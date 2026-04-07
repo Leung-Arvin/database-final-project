@@ -12,7 +12,6 @@ type EmployeeFormState = {
   ssnSin: string
   hotelId: string
   role: string
-  isManager: boolean
 }
 
 const emptyForm: EmployeeFormState = {
@@ -24,7 +23,6 @@ const emptyForm: EmployeeFormState = {
   ssnSin: '',
   hotelId: '',
   role: '',
-  isManager: false,
 }
 
 function splitFullName(fullName: string) {
@@ -47,7 +45,7 @@ function splitFullName(fullName: string) {
 }
 
 function getHotelDisplayName(hotel: ApiHotel) {
-  return `${hotel.chain_name} - ${hotel.area}`
+  return `Hotel ${hotel.hotel_id} - ${hotel.area}`
 }
 
 export default function EmployeeStaff() {
@@ -87,6 +85,14 @@ export default function EmployeeStaff() {
     loadPageData()
   }, [])
 
+  const isEmployeeManager = (employee: ApiEmployee) => {
+    return hotels.some(
+      (hotel) =>
+        hotel.hotel_id === employee.hotel_id &&
+        hotel.manager_employee_id === employee.employee_id
+    )
+  }
+
   const filteredEmployees = useMemo(() => {
     const query = searchTerm.trim().toLowerCase()
 
@@ -104,8 +110,8 @@ export default function EmployeeStaff() {
     })
   }, [employees, selectedHotel, searchTerm])
 
-  const managers = filteredEmployees.filter((employee) => employee.isManager)
-  const staff = filteredEmployees.filter((employee) => !employee.isManager)
+  const managers = filteredEmployees.filter((employee) => isEmployeeManager(employee))
+  const staff = filteredEmployees.filter((employee) => !isEmployeeManager(employee))
 
   const availableRoles = [
     'manager',
@@ -155,10 +161,9 @@ export default function EmployeeStaff() {
       email: employee.email,
       address: employee.address,
       phone: employee.phone || '',
-      ssnSin: employee.ssn_sin,
+      ssnSin: String(employee.ssn_sin ?? ''),
       hotelId: employee.hotel_id.toString(),
       role: employee.role,
-      isManager: employee.isManager,
     })
     setShowForm(true)
   }
@@ -185,29 +190,36 @@ export default function EmployeeStaff() {
       setSubmitting(true)
       setError(null)
 
+      const selectedHotelId = Number(formData.hotelId)
+
       const payload = {
-        hotel_id: Number(formData.hotelId),
+        hotel_id: selectedHotelId,
         full_name: fullName,
         address: formData.address,
         ssn_sin: formData.ssnSin,
         role: formData.role,
         email: formData.email,
         phone: formData.phone,
-        isManager: formData.isManager,
       }
 
+      let savedEmployee: ApiEmployee
+
       if (editingEmployee) {
-        await employeesApi.update(editingEmployee.employee_id, payload)
+        savedEmployee = await employeesApi.update(editingEmployee.employee_id, payload)
+
         alert(`Employee ${fullName} updated successfully!`)
       } else {
-        await employeesApi.create(payload)
+        savedEmployee = await employeesApi.create(payload)
+
         alert(`Employee ${fullName} added successfully!`)
       }
 
       resetForm()
       await loadPageData()
     } catch (err: any) {
-      alert(err?.response?.data?.error || 'Failed to save employee')
+      const message = err?.response?.data?.error || 'Failed to save employee'
+      setError(message)
+      alert(message)
     } finally {
       setSubmitting(false)
     }
@@ -224,11 +236,29 @@ export default function EmployeeStaff() {
 
     try {
       setError(null)
+
+      const employee = employees.find((e) => e.employee_id === employeeId)
+      if (employee) {
+        const managedHotel = hotels.find(
+          (hotel) =>
+            hotel.hotel_id === employee.hotel_id &&
+            hotel.manager_employee_id === employee.employee_id
+        )
+
+        if (managedHotel) {
+          await hotelsApi.update(managedHotel.hotel_id, {
+            manager_employee_id: null,
+          })
+        }
+      }
+
       await employeesApi.delete(employeeId)
       alert(`Employee ${employeeName} deleted successfully!`)
       await loadPageData()
     } catch (err: any) {
-      alert(err?.response?.data?.error || 'Failed to delete employee')
+      const message = err?.response?.data?.error || 'Failed to delete employee'
+      setError(message)
+      alert(message)
     }
   }
 
@@ -336,9 +366,6 @@ export default function EmployeeStaff() {
                 Hotel
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                Manager
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                 Actions
               </th>
             </tr>
@@ -361,9 +388,6 @@ export default function EmployeeStaff() {
                 </td>
                 <td className="px-6 py-4 text-sm text-gray-700">
                   {getHotelName(employee.hotel_id)}
-                </td>
-                <td className="px-6 py-4 text-sm text-gray-700">
-                  {employee.isManager ? 'Yes' : 'No'}
                 </td>
                 <td className="px-6 py-4 text-sm text-gray-700">
                   <div className="flex gap-2">
@@ -538,17 +562,6 @@ export default function EmployeeStaff() {
                   </select>
                 </div>
               </div>
-
-              <label className="flex items-center gap-3 pt-2">
-                <input
-                  name="isManager"
-                  type="checkbox"
-                  checked={formData.isManager}
-                  onChange={handleInputChange}
-                  className="h-4 w-4"
-                />
-                <span className="text-sm text-gray-700">Is Manager</span>
-              </label>
 
               <div className="flex justify-end gap-3 pt-2">
                 <button
