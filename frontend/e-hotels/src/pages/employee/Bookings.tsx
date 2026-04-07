@@ -30,7 +30,6 @@ export default function EmployeeBookings() {
   const [bookings, setBookings] = useState<BookingUI[]>([])
   const [customers, setCustomers] = useState<ApiCustomer[]>([])
   const [hotels, setHotels] = useState<ApiHotel[]>([])
-  const [selectedStatus, setSelectedStatus] = useState('all')
   const [selectedHotel, setSelectedHotel] = useState('all')
   const [searchTerm, setSearchTerm] = useState('')
   const [loading, setLoading] = useState(true)
@@ -102,8 +101,7 @@ export default function EmployeeBookings() {
     const query = searchTerm.trim().toLowerCase()
 
     return bookings.filter((booking) => {
-      const statusMatch =
-        selectedStatus === 'all' || booking.status === selectedStatus
+      const activeMatch = booking.status === 'active'
 
       const hotelMatch =
         selectedHotel === 'all' || String(booking.hotelId) === selectedHotel
@@ -115,9 +113,9 @@ export default function EmployeeBookings() {
         booking.id.toString().includes(query) ||
         booking.roomNumber.toLowerCase().includes(query)
 
-      return statusMatch && hotelMatch && searchMatch
+      return activeMatch && hotelMatch && searchMatch
     })
-  }, [bookings, selectedStatus, selectedHotel, searchTerm])
+  }, [bookings, selectedHotel, searchTerm])
 
   const uniqueHotels = useMemo(() => {
     const seen = new Set<number>()
@@ -161,12 +159,7 @@ export default function EmployeeBookings() {
   }
 
   const stats = {
-    total: bookings.length,
-    active: bookings.filter((b) => b.status === 'active').length,
-    converted: bookings.filter((b) => b.status === 'converted_to_renting')
-      .length,
-    cancelled: bookings.filter((b) => b.status === 'cancelled').length,
-    totalRevenue: bookings.reduce((sum, b) => sum + b.totalPrice, 0),
+    total: bookings.filter((b) => b.status === 'active').length,
   }
 
   if (loading) {
@@ -175,39 +168,17 @@ export default function EmployeeBookings() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <h1 className="text-3xl font-bold text-gray-900 mb-8">Manage Bookings</h1>
+      <h1 className="text-3xl font-bold text-gray-900 mb-8">Manage Active Bookings</h1>
 
       {error && (
         <div className="bg-red-100 text-red-700 p-4 rounded mb-6">{error}</div>
       )}
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        <Stat label="Total" value={stats.total} valueClassName="text-blue-600" />
-        <Stat label="Active" value={stats.active} valueClassName="text-green-600" />
-        <Stat
-          label="Converted"
-          value={stats.converted}
-          valueClassName="text-blue-600"
-        />
-        <Stat
-          label="Cancelled"
-          value={stats.cancelled}
-          valueClassName="text-red-600"
-        />
+      <div className="grid grid-cols-1 md:grid-cols-1 gap-4 mb-8">
+        <Stat label="Total Active Bookings" value={stats.total} valueClassName="text-blue-600" />
       </div>
 
-      <div className="bg-white rounded-lg shadow-md p-6 mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-        <select
-          value={selectedStatus}
-          onChange={(e) => setSelectedStatus(e.target.value)}
-          className="border p-2 rounded"
-        >
-          <option value="all">All Statuses</option>
-          <option value="active">Active</option>
-          <option value="converted_to_renting">Converted to Renting</option>
-          <option value="cancelled">Cancelled</option>
-        </select>
-
+      <div className="bg-white rounded-lg shadow-md p-6 mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
         <select
           value={selectedHotel}
           onChange={(e) => setSelectedHotel(e.target.value)}
