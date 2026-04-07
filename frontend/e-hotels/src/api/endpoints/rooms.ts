@@ -20,7 +20,7 @@ export const roomsApi = {
   // Get room by composite key
   getByCompositeKey: async (
     hotelId: number,
-    roomNumber: string
+    roomNumber: number
   ): Promise<ApiRoom> => {
     const response = await axiosInstance.get<ApiResponse<ApiRoom>>(
       `/rooms/${hotelId}/${roomNumber}`
@@ -40,7 +40,7 @@ export const roomsApi = {
   // Update room
   update: async (
     hotelId: number,
-    roomNumber: string,
+    roomNumber: number,
     data: Partial<ApiRoomBase>
   ): Promise<ApiRoom> => {
     const response = await axiosInstance.put<ApiResponse<ApiRoom>>(
@@ -51,14 +51,14 @@ export const roomsApi = {
   },
 
   // Delete room
-  delete: async (hotelId: number, roomNumber: string): Promise<void> => {
+  delete: async (hotelId: number, roomNumber: number): Promise<void> => {
     await axiosInstance.delete(`/rooms/${hotelId}/${roomNumber}`);
   },
 
   // Get room amenities
   getAmenities: async (
     hotelId: number,
-    roomNumber: string
+    roomNumber: number
   ): Promise<string[]> => {
     const response = await axiosInstance.get<ApiResponse<string[]>>(
       `/rooms/${hotelId}/${roomNumber}/amenities`
@@ -69,7 +69,7 @@ export const roomsApi = {
   // Add amenity to room
   addAmenity: async (
     hotelId: number,
-    roomNumber: string,
+    roomNumber: number,
     amenity: string
   ): Promise<void> => {
     await axiosInstance.post(
@@ -81,7 +81,7 @@ export const roomsApi = {
   // Remove amenity from room
   removeAmenity: async (
     hotelId: number,
-    roomNumber: string,
+    roomNumber: number,
     amenity: string
   ): Promise<void> => {
     await axiosInstance.delete(
@@ -92,7 +92,7 @@ export const roomsApi = {
   // Report room problem
   reportProblem: async (
     hotelId: number,
-    roomNumber: string,
+    roomNumber: number,
     description: string
   ): Promise<void> => {
     await axiosInstance.post(
