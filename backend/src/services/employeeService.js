@@ -48,12 +48,6 @@ function createEmployee(data) {
     throw error;
   }
 
-  if (Boolean(data.isManager) && String(data.role).toLowerCase() !== 'manager') {
-    const error = new Error('If isManager is true, role must be manager');
-    error.status = 400;
-    throw error;
-  }
-
   return employeeRepository.create(data);
 }
 
@@ -77,7 +71,7 @@ function updateEmployee(employeeId, data) {
 
   if (
     data.ssn_sin !== undefined &&
-    data.ssn_sin !== existingEmployee.ssn_sin
+    Number(data.ssn_sin) !== Number(existingEmployee.ssn_sin)
   ) {
     const duplicateEmployee = employeeRepository.getBySsnSin(data.ssn_sin);
     if (duplicateEmployee) {
@@ -85,17 +79,6 @@ function updateEmployee(employeeId, data) {
       error.status = 400;
       throw error;
     }
-  }
-
-  const finalRole =
-    data.role !== undefined ? String(data.role).toLowerCase() : String(existingEmployee.role).toLowerCase();
-  const finalIsManager =
-    data.isManager !== undefined ? Boolean(data.isManager) : existingEmployee.isManager;
-
-  if (finalIsManager && finalRole !== 'manager') {
-    const error = new Error('If isManager is true, role must be manager');
-    error.status = 400;
-    throw error;
   }
 
   return employeeRepository.update(employeeId, data);
