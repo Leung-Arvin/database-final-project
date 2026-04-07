@@ -9,7 +9,7 @@ type RoomFormState = {
   base_price: string
   amenities: string[]
   capacity: string
-  view_type: string
+  view_type: 'Sea' | 'Mountain'
   extendable: boolean
   hasDamage: boolean
   damageDescription: string
@@ -20,15 +20,30 @@ const emptyForm: RoomFormState = {
   room_number: '',
   base_price: '100',
   amenities: [],
-  capacity: 'double',
-  view_type: 'city',
+  capacity: '2',
+  view_type: 'Mountain',
   extendable: false,
   hasDamage: false,
   damageDescription: '',
 }
 
 function getHotelDisplayName(hotel: ApiHotel) {
-  return `${hotel.chain_name} - ${hotel.area}`
+  return `Hotel ${hotel.hotel_id} - ${hotel.area}`
+}
+
+function getCapacityLabel(capacity: number) {
+  switch (capacity) {
+    case 1:
+      return 'Single'
+    case 2:
+      return 'Double'
+    case 3:
+      return 'Triple'
+    case 4:
+      return 'Quad'
+    default:
+      return `${capacity} person${capacity === 1 ? '' : 's'}`
+  }
 }
 
 export default function EmployeeRooms() {
@@ -49,7 +64,7 @@ export default function EmployeeRooms() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const roomKey = (hotelId: number, roomNumber: string) => `${hotelId}-${roomNumber}`
+  const roomKey = (hotelId: number, roomNumber: number) => `${hotelId}-${roomNumber}`
 
   const loadPageData = async () => {
     try {
@@ -89,7 +104,7 @@ export default function EmployeeRooms() {
       if (!query) return true
 
       return (
-        room.room_number.toLowerCase().includes(query) ||
+        String(room.room_number).toLowerCase().includes(query) ||
         getHotelName(room.hotel_id).toLowerCase().includes(query)
       )
     })
@@ -108,15 +123,14 @@ export default function EmployeeRooms() {
             ).toFixed(0)
           : '0',
       byCapacity: {
-        single: filteredRooms.filter((r) => r.capacity === 'single').length,
-        double: filteredRooms.filter((r) => r.capacity === 'double').length,
-        triple: filteredRooms.filter((r) => r.capacity === 'triple').length,
-        quad: filteredRooms.filter((r) => r.capacity === 'quad').length,
+        single: filteredRooms.filter((r) => Number(r.capacity) === 1).length,
+        double: filteredRooms.filter((r) => Number(r.capacity) === 2).length,
+        triple: filteredRooms.filter((r) => Number(r.capacity) === 3).length,
+        quad: filteredRooms.filter((r) => Number(r.capacity) === 4).length,
       },
       byView: {
-        sea: filteredRooms.filter((r) => r.view_type === 'sea').length,
-        mountain: filteredRooms.filter((r) => r.view_type === 'mountain').length,
-        city: filteredRooms.filter((r) => r.view_type === 'city').length,
+        sea: filteredRooms.filter((r) => r.view_type === 'Sea').length,
+        mountain: filteredRooms.filter((r) => r.view_type === 'Mountain').length,
       },
     }
   }, [filteredRooms])
@@ -136,10 +150,12 @@ export default function EmployeeRooms() {
   }
 
   const addAmenity = () => {
-    if (amenityInput && !formData.amenities.includes(amenityInput)) {
+    const trimmed = amenityInput.trim()
+
+    if (trimmed && !formData.amenities.includes(trimmed)) {
       setFormData((prev) => ({
         ...prev,
-        amenities: [...prev.amenities, amenityInput],
+        amenities: [...prev.amenities, trimmed],
       }))
       setAmenityInput('')
     }
@@ -160,8 +176,8 @@ export default function EmployeeRooms() {
       room_number: '',
       base_price: '100',
       amenities: [],
-      capacity: 'double',
-      view_type: 'city',
+      capacity: '2',
+      view_type: 'Mountain',
       extendable: false,
       hasDamage: false,
       damageDescription: '',
@@ -173,12 +189,12 @@ export default function EmployeeRooms() {
     setEditingRoom(room)
     setFormData({
       hotel_id: String(room.hotel_id),
-      room_number: room.room_number,
+      room_number: String(room.room_number),
       base_price: String(room.base_price),
       amenities: room.amenities || [],
-      capacity: room.capacity,
+      capacity: String(room.capacity),
       view_type: room.view_type,
-      extendable: room.extendable,
+      extendable: Boolean(room.extendable),
       hasDamage: !!room.hasDamage,
       damageDescription: room.damageDescription || '',
     })
@@ -187,7 +203,7 @@ export default function EmployeeRooms() {
 
   const syncAmenities = async (
     hotelId: number,
-    roomNumber: string,
+    roomNumber: number,
     previousAmenities: string[],
     nextAmenities: string[]
   ) => {
@@ -205,7 +221,7 @@ export default function EmployeeRooms() {
   const syncDamage = async (
     room: ApiRoom | null,
     hotelId: number,
-    roomNumber: string,
+    roomNumber: number,
     wantsDamage: boolean,
     damageDescription: string
   ) => {
@@ -262,9 +278,9 @@ export default function EmployeeRooms() {
 
       const payload = {
         hotel_id: Number(formData.hotel_id),
-        room_number: formData.room_number.trim(),
+        room_number: Number(formData.room_number),
         base_price: Number(formData.base_price),
-        capacity: formData.capacity,
+        capacity: Number(formData.capacity),
         view_type: formData.view_type,
         extendable: formData.extendable,
       }
@@ -388,6 +404,9 @@ export default function EmployeeRooms() {
       setError(null)
       await roomsApi.update(room.hotel_id, room.room_number, {
         base_price: tempPrice,
+        capacity: Number(room.capacity),
+        view_type: room.view_type,
+        extendable: Boolean(room.extendable),
       })
       alert(`Price updated to $${tempPrice}`)
       setEditingPriceKey(null)
@@ -406,9 +425,6 @@ export default function EmployeeRooms() {
     'Fridge',
     'Mini Bar',
     'Jacuzzi',
-    'Ocean View',
-    'Mountain View',
-    'City View',
     'Balcony',
     'Work Desk',
     'Coffee Maker',
@@ -548,7 +564,7 @@ export default function EmployeeRooms() {
                       <h3 className="text-xl font-semibold text-gray-900">
                         Room {room.room_number}
                       </h3>
-                      {room.extendable && (
+                      {Boolean(room.extendable) && (
                         <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
                           Extendable
                         </span>
@@ -600,15 +616,16 @@ export default function EmployeeRooms() {
                 <div className="space-y-2 mb-4">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium text-gray-700 w-24">Capacity:</span>
-                    <span className="text-sm text-gray-600 capitalize">{room.capacity}</span>
+                    <span className="text-sm text-gray-600 capitalize">
+                      {getCapacityLabel(Number(room.capacity))}
+                    </span>
                   </div>
 
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium text-gray-700 w-24">View:</span>
                     <span className="text-sm text-gray-600 capitalize flex items-center gap-1">
-                      {room.view_type === 'sea' && '🌊'}
-                      {room.view_type === 'mountain' && '⛰️'}
-                      {room.view_type === 'city' && '🏙️'}
+                      {room.view_type === 'Sea' && '🌊'}
+                      {room.view_type === 'Mountain' && '⛰️'}
                       {room.view_type}
                     </span>
                   </div>
@@ -726,13 +743,13 @@ export default function EmployeeRooms() {
                       Room Number *
                     </label>
                     <input
-                      type="text"
+                      type="number"
                       name="room_number"
                       value={formData.room_number}
                       onChange={handleInputChange}
                       required
                       disabled={!!editingRoom}
-                      placeholder="e.g., 101, 202A"
+                      placeholder="e.g., 101"
                       className="w-full px-3 py-2 border border-gray-300 rounded-md"
                     />
                   </div>
@@ -748,7 +765,7 @@ export default function EmployeeRooms() {
                       onChange={handleInputChange}
                       required
                       min="0"
-                      step="10"
+                      step="0.01"
                       className="w-full px-3 py-2 border border-gray-300 rounded-md"
                     />
                   </div>
@@ -766,10 +783,10 @@ export default function EmployeeRooms() {
                       required
                       className="w-full px-3 py-2 border border-gray-300 rounded-md"
                     >
-                      <option value="single">Single (1 person)</option>
-                      <option value="double">Double (2 people)</option>
-                      <option value="triple">Triple (3 people)</option>
-                      <option value="quad">Quad (4 people)</option>
+                      <option value="1">Single (1 person)</option>
+                      <option value="2">Double (2 people)</option>
+                      <option value="3">Triple (3 people)</option>
+                      <option value="4">Quad (4 people)</option>
                     </select>
                   </div>
 
@@ -782,9 +799,8 @@ export default function EmployeeRooms() {
                       required
                       className="w-full px-3 py-2 border border-gray-300 rounded-md"
                     >
-                      <option value="city">City View</option>
-                      <option value="mountain">Mountain View</option>
-                      <option value="sea">Sea View</option>
+                      <option value="Mountain">Mountain View</option>
+                      <option value="Sea">Sea View</option>
                     </select>
                   </div>
 
