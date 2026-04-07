@@ -1,93 +1,111 @@
-const { bookings } = require('../data/mockData');
+const db = require('../db');
 
 function getAll(filters = {}) {
-  let results = [...bookings];
+  let query = `SELECT * FROM Booking WHERE isDeleted = 0`;
+  const params = [];
 
   if (filters.status) {
-    results = results.filter((booking) => booking.status === filters.status);
+    query += ` AND status = ?`;
+    params.push(filters.status);
   }
 
   if (filters.hotel_id) {
-    results = results.filter(
-      (booking) => booking.hotel_id === Number(filters.hotel_id)
-    );
+    query += ` AND hotel_id = ?`;
+    params.push(Number(filters.hotel_id));
   }
 
   if (filters.customer_id) {
-    results = results.filter(
-      (booking) => booking.customer_id === Number(filters.customer_id)
-    );
+    query += ` AND customer_id = ?`;
+    params.push(Number(filters.customer_id));
   }
 
-  return results.filter((booking) => booking.isDeleted !== true);
+  return db.prepare(query).all(...params);
 }
 
 function getById(bookingId) {
-  return (
-    bookings.find(
-      (booking) =>
-        booking.booking_id === Number(bookingId) && booking.isDeleted !== true
-    ) || null
-  );
+  return db.prepare(`
+    SELECT *
+    FROM Booking
+    WHERE booking_id = ? AND isDeleted = 0
+  `).get(Number(bookingId)) || null;
 }
 
 function create(data) {
-  const newBooking = {
-    booking_id:
-      bookings.length > 0
-        ? Math.max(...bookings.map((booking) => booking.booking_id)) + 1
-        : 1,
-    customer_id: Number(data.customer_id),
-    hotel_id: Number(data.hotel_id),
-    room_number: String(data.room_number),
-    hotel_name_snapshot: data.hotel_name_snapshot,
-    hotel_address_snapshot: data.hotel_address_snapshot,
-    room_number_snapshot: String(data.room_number_snapshot),
-    start_date: data.start_date,
-    end_date: data.end_date,
-    booking_price: Number(data.booking_price),
-    status: data.status || 'confirmed',
-    isDeleted: false,
-  };
+  const stmt = db.prepare(`
+    INSERT INTO Booking (
+      customer_id,
+      hotel_id,
+      room_number,
+      hotel_name_snapshot,
+      hotel_address_snapshot,
+      room_number_snapshot,
+      start_date,
+      end_date,
+      booking_price,
+      status,
+      isDeleted
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+  `);
 
-  bookings.push(newBooking);
-  return newBooking;
+  const result = stmt.run(
+    Number(data.customer_id),
+    Number(data.hotel_id),
+    Number(data.room_number),
+    data.hotel_name_snapshot,
+    data.hotel_address_snapshot,
+    Number(data.room_number_snapshot),
+    data.start_date,
+    data.end_date,
+    Number(data.booking_price),
+    data.status || 'active'
+  );
+
+  return getById(result.lastInsertRowid);
 }
 
 function updateStatus(bookingId, status) {
-  const booking = bookings.find(
-    (item) =>
-      item.booking_id === Number(bookingId) && item.isDeleted !== true
-  );
+  const result = db.prepare(`
+    UPDATE Booking
+    SET status = ?
+    WHERE booking_id = ? AND isDeleted = 0
+  `).run(status, Number(bookingId));
 
-  if (!booking) return null;
-
-  booking.status = status;
-  return booking;
+  if (result.changes === 0) return null;
+  return getById(bookingId);
 }
 
 function softDelete(bookingId) {
-  const booking = bookings.find(
-    (item) =>
-      item.booking_id === Number(bookingId) && item.isDeleted !== true
-  );
+  const result = db.prepare(`
+    UPDATE Booking
+    SET isDeleted = 1
+    WHERE booking_id = ? AND isDeleted = 0
+  `).run(Number(bookingId));
 
-  if (!booking) return null;
-
-  booking.isDeleted = true;
-  return booking;
+  if (result.changes === 0) return null;
+  return db.prepare(`
+    SELECT *
+    FROM Booking
+    WHERE booking_id = ?
+  `).get(Number(bookingId));
 }
 
 function findOverlappingBookings(hotelId, roomNumber, startDate, endDate) {
-  return bookings.filter((booking) => {
-    if (booking.isDeleted === true) return false;
-    if (booking.hotel_id !== Number(hotelId)) return false;
-    if (booking.room_number !== String(roomNumber)) return false;
-    if (booking.status === 'cancelled') return false;
-    if (booking.status === 'checked_out') return false;
-
-    return booking.start_date < endDate && booking.end_date > startDate;
-  });
+  return db.prepare(`
+    SELECT *
+    FROM Booking
+    WHERE isDeleted = 0
+      AND hotel_id = ?
+      AND room_number = ?
+      AND status != 'cancelled'
+      AND start_date < ?
+      AND end_date > ?
+  `).all(
+    Number(hotelId),
+    Number(roomNumber),
+    endDate,
+    startDate
+  );
 }
 
 module.exports = {

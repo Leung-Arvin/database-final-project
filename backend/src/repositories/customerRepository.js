@@ -1,7 +1,4 @@
-const Database = require('better-sqlite3');
-const path = require('path');
-
-const db = new Database(path.resolve(__dirname, '../data/hotel-database.db'));
+const db = require('../db');
 
 function getAll() {
   return db.prepare(`
@@ -98,12 +95,12 @@ function getBookingsByCustomerId(customerId) {
   `).all(Number(customerId));
 }
 
-function getByIdNumber(idNumber) {
+function getByGovernmentId(idType, idNumber) {
   return db.prepare(`
     SELECT *
     FROM Customer
-    WHERE id_number = ?
-  `).get(String(idNumber)) || null;
+    WHERE id_type = ? AND id_number = ?
+  `).get(String(idType), String(idNumber)) || null;
 }
 
 module.exports = {
@@ -113,5 +110,5 @@ module.exports = {
   update,
   delete: deleteCustomer,
   getBookingsByCustomerId,
-  getByIdNumber,
+  getByGovernmentId,
 };

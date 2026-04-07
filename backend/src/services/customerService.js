@@ -32,7 +32,10 @@ function createCustomer(data) {
     throw error;
   }
 
-  const existingCustomer = customerRepository.getByIdNumber(data.id_number);
+  const existingCustomer = customerRepository.getByGovernmentId(
+    data.id_type,
+    data.id_number
+  );
   if (existingCustomer) {
     const error = new Error('A customer with this id_number already exists');
     error.status = 400;
@@ -51,13 +54,25 @@ function updateCustomer(customerId, data) {
     throw error;
   }
 
+  const nextIdType =
+    data.id_type !== undefined ? data.id_type : existingCustomer.id_type;
+  const nextIdNumber =
+    data.id_number !== undefined ? data.id_number : existingCustomer.id_number;
+
   if (
-    data.id_number !== undefined &&
-    data.id_number !== existingCustomer.id_number
+    nextIdType !== existingCustomer.id_type ||
+    nextIdNumber !== existingCustomer.id_number
   ) {
-    const duplicateCustomer = customerRepository.getByIdNumber(data.id_number);
-    if (duplicateCustomer) {
-      const error = new Error('A customer with this id_number already exists');
+    const duplicateCustomer = customerRepository.getByGovernmentId(
+      nextIdType,
+      nextIdNumber
+    );
+
+    if (
+      duplicateCustomer &&
+      duplicateCustomer.customer_id !== existingCustomer.customer_id
+    ) {
+      const error = new Error('A customer with this id_type and id_number already exists');
       error.status = 400;
       throw error;
     }

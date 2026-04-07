@@ -1,8 +1,4 @@
-const Database = require('better-sqlite3');
-const path = require('path');
-
-// Adjust this path if your DB file lives somewhere else in your project.
-const db = new Database(path.resolve(__dirname, '../data/hotel-database.db'));
+const db = require('../db');
 
 function getAll() {
   const stmt = db.prepare(`

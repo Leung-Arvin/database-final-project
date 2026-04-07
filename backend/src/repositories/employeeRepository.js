@@ -1,7 +1,4 @@
-const Database = require('better-sqlite3');
-const path = require('path');
-
-const db = new Database(path.resolve(__dirname, '../data/hotel-database.db'));
+const db = require('../db');
 
 function getAll(filters = {}) {
   let query = `

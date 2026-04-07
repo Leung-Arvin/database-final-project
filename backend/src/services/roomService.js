@@ -61,6 +61,20 @@ function createRoom(data) {
     throw error;
   }
 
+  const allowedViews = ['Sea', 'Mountain'];
+
+  if (!Number.isInteger(Number(data.capacity)) || Number(data.capacity) <= 0) {
+    const error = new Error('capacity must be a positive integer');
+    error.status = 400;
+    throw error;
+  }
+
+  if (!allowedViews.includes(data.view_type)) {
+    const error = new Error("view_type must be 'Sea' or 'Mountain'");
+    error.status = 400;
+    throw error;
+}
+
   return roomRepository.create(data);
 }
 
@@ -78,6 +92,20 @@ function updateRoom(hotelId, roomNumber, data) {
     error.status = 400;
     throw error;
   }
+
+  const allowedViews = ['Sea', 'Mountain'];
+
+  if (!Number.isInteger(Number(data.capacity)) || Number(data.capacity) <= 0) {
+    const error = new Error('capacity must be a positive integer');
+    error.status = 400;
+    throw error;
+  }
+
+  if (!allowedViews.includes(data.view_type)) {
+    const error = new Error("view_type must be 'Sea' or 'Mountain'");
+    error.status = 400;
+    throw error;
+}
 
   return roomRepository.update(hotelId, roomNumber, data);
 }

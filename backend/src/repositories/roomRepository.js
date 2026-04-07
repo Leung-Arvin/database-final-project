@@ -1,7 +1,4 @@
-const Database = require('better-sqlite3');
-const path = require('path');
-
-const db = new Database(path.resolve(__dirname, '../data/hotel-database.db'));
+const db = require('../db');
 
 function getByHotelId(hotelId) {
   const stmt = db.prepare(`
@@ -21,7 +18,7 @@ function getByCompositeKey(hotelId, roomNumber) {
     WHERE hotel_id = ? AND room_number = ?
   `);
 
-  return stmt.get(Number(hotelId), String(roomNumber)) || null;
+  return stmt.get(Number(hotelId), Number(roomNumber)) || null;
 }
 
 function create(data) {
@@ -39,7 +36,7 @@ function create(data) {
 
   stmt.run(
     Number(data.hotel_id),
-    String(data.room_number),
+    Number(data.room_number),
     Number(data.base_price),
     data.capacity,
     data.view_type,
@@ -78,7 +75,7 @@ function update(hotelId, roomNumber, data) {
     updated.view_type,
     updated.extendable,
     Number(hotelId),
-    String(roomNumber)
+    Number(roomNumber)
   );
 
   return getByCompositeKey(hotelId, roomNumber);
@@ -90,7 +87,7 @@ function remove(hotelId, roomNumber) {
     WHERE hotel_id = ? AND room_number = ?
   `);
 
-  const result = stmt.run(Number(hotelId), String(roomNumber));
+  const result = stmt.run(Number(hotelId), Number(roomNumber));
   return result.changes > 0;
 }
 
@@ -101,7 +98,7 @@ function getAmenities(hotelId, roomNumber) {
     WHERE hotel_id = ? AND room_number = ?
   `);
 
-  return stmt.all(Number(hotelId), String(roomNumber)).map(a => a.amenity);
+  return stmt.all(Number(hotelId), Number(roomNumber)).map(a => a.amenity);
 }
 
 function addAmenity(hotelId, roomNumber, amenity) {
@@ -110,7 +107,7 @@ function addAmenity(hotelId, roomNumber, amenity) {
     VALUES (?, ?, ?)
   `);
 
-  stmt.run(Number(hotelId), String(roomNumber), amenity);
+  stmt.run(Number(hotelId), Number(roomNumber), amenity);
 }
 
 function removeAmenity(hotelId, roomNumber, amenity) {
@@ -119,7 +116,7 @@ function removeAmenity(hotelId, roomNumber, amenity) {
     WHERE hotel_id = ? AND room_number = ? AND amenity = ?
   `);
 
-  const result = stmt.run(Number(hotelId), String(roomNumber), amenity);
+  const result = stmt.run(Number(hotelId), Number(roomNumber), amenity);
   return result.changes > 0;
 }
 
@@ -130,7 +127,7 @@ function getActiveProblem(hotelId, roomNumber) {
     WHERE hotel_id = ? AND room_number = ? AND resolved_date IS NULL
   `);
 
-  return stmt.get(Number(hotelId), String(roomNumber)) || null;
+  return stmt.get(Number(hotelId), Number(roomNumber)) || null;
 }
 
 function createProblem(hotelId, roomNumber, description) {
@@ -147,7 +144,7 @@ function createProblem(hotelId, roomNumber, description) {
 
   const result = stmt.run(
     Number(hotelId),
-    String(roomNumber),
+    Number(roomNumber),
     description
   );
 

@@ -1,7 +1,8 @@
 const bookingRepository = require('../repositories/bookingRepository');
 const hotelRepository = require('../repositories/hotelRepository');
 const roomRepository = require('../repositories/roomRepository');
-const { customers } = require('../data/mockData');
+const customerRepository = require('../repositories/customerRepository');
+const hotelChainRepository = require('../repositories/hotelChainRepository');
 
 function getAllBookings(filters) {
   return bookingRepository.getAll(filters);
@@ -35,9 +36,7 @@ function createBooking(data) {
     throw error;
   }
 
-  const customer = customers.find(
-    (item) => item.customer_id === Number(data.customer_id)
-  );
+  const customer = customerRepository.getById(data.customer_id);
   if (!customer) {
     const error = new Error('Customer not found');
     error.status = 400;
@@ -110,17 +109,25 @@ function createBooking(data) {
     throw error;
   }
 
+  const chain = hotelChainRepository.getById(hotel.chain_id);
+
+  if (!chain) {
+    const error = new Error('Hotel chain not found');
+    error.status = 400;
+    throw error;
+  }
+
   return bookingRepository.create({
     customer_id: data.customer_id,
     hotel_id: data.hotel_id,
-    room_number: data.room_number,
-    hotel_name_snapshot: `${hotel.chain_name} - ${hotel.area}`,
+    room_number: Number(data.room_number),
+    hotel_name_snapshot: `${chain.chain_name} - ${hotel.area}`,
     hotel_address_snapshot: hotel.address,
-    room_number_snapshot: data.room_number,
+    room_number_snapshot: Number(data.room_number),
     start_date: data.start_date,
     end_date: data.end_date,
     booking_price: data.booking_price,
-    status: 'confirmed',
+    status: 'active',
   });
 }
 
@@ -133,13 +140,7 @@ function updateBookingStatus(bookingId, status) {
     throw error;
   }
 
-  const allowedStatuses = [
-    'pending',
-    'confirmed',
-    'checked_in',
-    'checked_out',
-    'cancelled',
-  ];
+  const allowedStatuses = ['active', 'cancelled', 'converted_to_renting'];
 
   if (!allowedStatuses.includes(status)) {
     const error = new Error('Invalid booking status');
@@ -159,8 +160,8 @@ function cancelBooking(bookingId) {
     throw error;
   }
 
-  if (booking.status === 'checked_in' || booking.status === 'checked_out') {
-    const error = new Error('Cannot cancel a booking that has already been checked in or out');
+  if (booking.status === 'converted_to_renting') {
+    const error = new Error('Cannot cancel a booking that has already been converted to renting');
     error.status = 400;
     throw error;
   }
@@ -183,7 +184,7 @@ function confirmBooking(bookingId) {
     throw error;
   }
 
-  return bookingRepository.updateStatus(bookingId, 'confirmed');
+  return bookingRepository.updateStatus(bookingId, 'active');
 }
 
 module.exports = {
