@@ -21,8 +21,13 @@ function getRoomCapacityByHotelIdReport(hotelId) {
   return reportRepository.getRoomCapacityByHotelId(hotelId);
 }
 
+function getHotelsAboveAverageCapacityReport() {
+  return reportRepository.getHotelsAboveAverageCapacity();
+}
+
 module.exports = {
   getAvailableRoomsPerAreaReport,
   getRoomCapacityByHotelReport,
   getRoomCapacityByHotelIdReport,
+  getHotelsAboveAverageCapacityReport,
 };

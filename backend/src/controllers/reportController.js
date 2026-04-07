@@ -30,8 +30,18 @@ function getRoomCapacityByHotelId(req, res, next) {
   }
 }
 
+function getHotelsAboveAverageCapacity(req, res, next) {
+  try {
+    const report = reportService.getHotelsAboveAverageCapacityReport();
+    return success(res, report);
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   getAvailableRoomsPerArea,
   getRoomCapacityByHotel,
   getRoomCapacityByHotelId,
+  getHotelsAboveAverageCapacity,
 };
