@@ -26,8 +26,8 @@ function getChainName(chainId: number, chains: ApiHotelChain[]) {
   return chain ? chain.chain_name : 'Unknown'
 }
 
-function getHotelDisplayName(hotel: ApiHotel) {
-  return `${hotel.chain_name} - ${hotel.area}`
+function getHotelDisplayName(hotel: ApiHotel, chains: ApiHotelChain[]) {
+  return `${getChainName(hotel.chain_id, chains)} - ${hotel.area}`
 }
 
 export default function EmployeeHotels() {
@@ -137,7 +137,9 @@ export default function EmployeeHotels() {
 
       if (editingHotel) {
         await hotelsApi.update(editingHotel.hotel_id, payload)
-        alert(`Hotel "${getHotelDisplayName(editingHotel)}" updated successfully!`)
+        alert(
+          `Hotel "${getHotelDisplayName(editingHotel, hotelChains)}" updated successfully!`
+        )
       } else {
         await hotelsApi.create(payload)
         alert('Hotel created successfully!')
@@ -146,7 +148,9 @@ export default function EmployeeHotels() {
       resetForm()
       await loadPageData()
     } catch (err: any) {
-      alert(err?.response?.data?.error || 'Failed to save hotel')
+      const message = err?.response?.data?.error || 'Failed to save hotel'
+      setError(message)
+      alert(message)
     } finally {
       setSubmitting(false)
     }
@@ -163,7 +167,9 @@ export default function EmployeeHotels() {
       alert(`Hotel "${hotelName}" deleted successfully!`)
       await loadPageData()
     } catch (err: any) {
-      alert(err?.response?.data?.error || 'Failed to delete hotel')
+      const message = err?.response?.data?.error || 'Failed to delete hotel'
+      setError(message)
+      alert(message)
     }
   }
 
@@ -235,7 +241,9 @@ export default function EmployeeHotels() {
             >
               <div className="flex justify-between items-start">
                 <div>
-                  <h3 className="text-xl font-bold">{getHotelDisplayName(hotel)}</h3>
+                  <h3 className="text-xl font-bold">
+                    {getHotelDisplayName(hotel, hotelChains)}
+                  </h3>
                   <p className="text-sm opacity-90 mt-1">
                     {getChainName(hotel.chain_id, hotelChains)}
                   </p>
@@ -279,7 +287,10 @@ export default function EmployeeHotels() {
                 </button>
                 <button
                   onClick={() =>
-                    handleDelete(hotel.hotel_id, getHotelDisplayName(hotel))
+                    handleDelete(
+                      hotel.hotel_id,
+                      getHotelDisplayName(hotel, hotelChains)
+                    )
                   }
                   className="flex-1 px-3 py-2 bg-red-100 text-red-800 rounded-md hover:bg-red-200"
                 >
