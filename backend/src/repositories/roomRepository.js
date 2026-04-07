@@ -1,192 +1,233 @@
-const { rooms, roomAmenities, roomProblems, hotels } = require('../data/mockData');
+const Database = require('better-sqlite3');
+const path = require('path');
 
-function getAll() {
-  return rooms;
-}
+const db = new Database(path.resolve(__dirname, '../data/hotel-database.db'));
 
 function getByHotelId(hotelId) {
-  return rooms.filter((room) => room.hotel_id === Number(hotelId));
+  const stmt = db.prepare(`
+    SELECT *
+    FROM Room
+    WHERE hotel_id = ?
+    ORDER BY room_number
+  `);
+
+  return stmt.all(Number(hotelId));
 }
 
 function getByCompositeKey(hotelId, roomNumber) {
-  return (
-    rooms.find(
-      (room) =>
-        room.hotel_id === Number(hotelId) &&
-        room.room_number === String(roomNumber)
-    ) || null
-  );
+  const stmt = db.prepare(`
+    SELECT *
+    FROM Room
+    WHERE hotel_id = ? AND room_number = ?
+  `);
+
+  return stmt.get(Number(hotelId), String(roomNumber)) || null;
 }
 
 function create(data) {
-  const newRoom = {
-    hotel_id: Number(data.hotel_id),
-    room_number: String(data.room_number),
-    base_price: Number(data.base_price),
-    capacity: data.capacity,
-    view_type: data.view_type,
-    extendable: Boolean(data.extendable),
-  };
+  const stmt = db.prepare(`
+    INSERT INTO Room (
+      hotel_id,
+      room_number,
+      base_price,
+      capacity,
+      view_type,
+      extendable
+    )
+    VALUES (?, ?, ?, ?, ?, ?)
+  `);
 
-  rooms.push(newRoom);
-  return newRoom;
+  stmt.run(
+    Number(data.hotel_id),
+    String(data.room_number),
+    Number(data.base_price),
+    data.capacity,
+    data.view_type,
+    data.extendable ? 1 : 0
+  );
+
+  return getByCompositeKey(data.hotel_id, data.room_number);
 }
 
 function update(hotelId, roomNumber, data) {
-  const index = rooms.findIndex(
-    (room) =>
-      room.hotel_id === Number(hotelId) &&
-      room.room_number === String(roomNumber)
-  );
+  const existing = getByCompositeKey(hotelId, roomNumber);
+  if (!existing) return null;
 
-  if (index === -1) return null;
-
-  rooms[index] = {
-    ...rooms[index],
-    ...data,
-    hotel_id: rooms[index].hotel_id,
-    room_number: rooms[index].room_number,
+  const updated = {
     base_price:
-      data.base_price !== undefined
-        ? Number(data.base_price)
-        : rooms[index].base_price,
+      data.base_price !== undefined ? Number(data.base_price) : existing.base_price,
+    capacity:
+      data.capacity !== undefined ? data.capacity : existing.capacity,
+    view_type:
+      data.view_type !== undefined ? data.view_type : existing.view_type,
     extendable:
       data.extendable !== undefined
-        ? Boolean(data.extendable)
-        : rooms[index].extendable,
+        ? (data.extendable ? 1 : 0)
+        : existing.extendable,
   };
 
-  return rooms[index];
+  const stmt = db.prepare(`
+    UPDATE Room
+    SET base_price = ?, capacity = ?, view_type = ?, extendable = ?
+    WHERE hotel_id = ? AND room_number = ?
+  `);
+
+  stmt.run(
+    updated.base_price,
+    updated.capacity,
+    updated.view_type,
+    updated.extendable,
+    Number(hotelId),
+    String(roomNumber)
+  );
+
+  return getByCompositeKey(hotelId, roomNumber);
 }
 
 function remove(hotelId, roomNumber) {
-  const index = rooms.findIndex(
-    (room) =>
-      room.hotel_id === Number(hotelId) &&
-      room.room_number === String(roomNumber)
-  );
+  const stmt = db.prepare(`
+    DELETE FROM Room
+    WHERE hotel_id = ? AND room_number = ?
+  `);
 
-  if (index === -1) return false;
-
-  rooms.splice(index, 1);
-  return true;
+  const result = stmt.run(Number(hotelId), String(roomNumber));
+  return result.changes > 0;
 }
 
 function getAmenities(hotelId, roomNumber) {
-  return roomAmenities
-    .filter(
-      (item) =>
-        item.hotel_id === Number(hotelId) &&
-        item.room_number === String(roomNumber)
-    )
-    .map((item) => item.amenity);
+  const stmt = db.prepare(`
+    SELECT amenity
+    FROM RoomAmenity
+    WHERE hotel_id = ? AND room_number = ?
+  `);
+
+  return stmt.all(Number(hotelId), String(roomNumber)).map(a => a.amenity);
 }
 
 function addAmenity(hotelId, roomNumber, amenity) {
-  roomAmenities.push({
-    hotel_id: Number(hotelId),
-    room_number: String(roomNumber),
-    amenity,
-  });
+  const stmt = db.prepare(`
+    INSERT INTO RoomAmenity (hotel_id, room_number, amenity)
+    VALUES (?, ?, ?)
+  `);
+
+  stmt.run(Number(hotelId), String(roomNumber), amenity);
 }
 
 function removeAmenity(hotelId, roomNumber, amenity) {
-  const index = roomAmenities.findIndex(
-    (item) =>
-      item.hotel_id === Number(hotelId) &&
-      item.room_number === String(roomNumber) &&
-      item.amenity === amenity
-  );
+  const stmt = db.prepare(`
+    DELETE FROM RoomAmenity
+    WHERE hotel_id = ? AND room_number = ? AND amenity = ?
+  `);
 
-  if (index === -1) return false;
-
-  roomAmenities.splice(index, 1);
-  return true;
+  const result = stmt.run(Number(hotelId), String(roomNumber), amenity);
+  return result.changes > 0;
 }
 
 function getActiveProblem(hotelId, roomNumber) {
-  return (
-    roomProblems.find(
-      (problem) =>
-        problem.hotel_id === Number(hotelId) &&
-        problem.room_number === String(roomNumber) &&
-        problem.resolved_date === null
-    ) || null
-  );
+  const stmt = db.prepare(`
+    SELECT *
+    FROM RoomProblem
+    WHERE hotel_id = ? AND room_number = ? AND resolved_date IS NULL
+  `);
+
+  return stmt.get(Number(hotelId), String(roomNumber)) || null;
 }
 
 function createProblem(hotelId, roomNumber, description) {
-  const newProblem = {
-    problem_id: roomProblems.length > 0
-      ? Math.max(...roomProblems.map((p) => p.problem_id)) + 1
-      : 1,
-    hotel_id: Number(hotelId),
-    room_number: String(roomNumber),
-    description,
-    reported_date: new Date().toISOString().split('T')[0],
-    resolved_date: null,
-  };
+  const stmt = db.prepare(`
+    INSERT INTO RoomProblem (
+      hotel_id,
+      room_number,
+      description,
+      reported_date,
+      resolved_date
+    )
+    VALUES (?, ?, ?, DATE('now'), NULL)
+  `);
 
-  roomProblems.push(newProblem);
-  return newProblem;
+  const result = stmt.run(
+    Number(hotelId),
+    String(roomNumber),
+    description
+  );
+
+  return db.prepare(`
+    SELECT *
+    FROM RoomProblem
+    WHERE problem_id = ?
+  `).get(result.lastInsertRowid);
 }
 
 function resolveProblem(problemId) {
-  const problem = roomProblems.find(
-    (item) => item.problem_id === Number(problemId)
-  );
+  const stmt = db.prepare(`
+    UPDATE RoomProblem
+    SET resolved_date = DATE('now')
+    WHERE problem_id = ?
+  `);
 
-  if (!problem) return null;
+  const result = stmt.run(Number(problemId));
+  if (result.changes === 0) return null;
 
-  problem.resolved_date = new Date().toISOString().split('T')[0];
-  return problem;
+  return db.prepare(`
+    SELECT *
+    FROM RoomProblem
+    WHERE problem_id = ?
+  `).get(problemId);
 }
 
 function search(filters = {}) {
-  let results = [...rooms];
+  let query = `
+    SELECT r.*
+    FROM Room r
+    JOIN Hotel h ON r.hotel_id = h.hotel_id
+  `;
+
+  const conditions = [];
+  const params = [];
 
   if (filters.hotel_id) {
-    results = results.filter((room) => room.hotel_id === Number(filters.hotel_id));
+    conditions.push('r.hotel_id = ?');
+    params.push(Number(filters.hotel_id));
   }
 
   if (filters.capacity) {
-    results = results.filter((room) => room.capacity === filters.capacity);
+    conditions.push('r.capacity = ?');
+    params.push(filters.capacity);
   }
 
   if (filters.min_price !== undefined) {
-    results = results.filter((room) => room.base_price >= Number(filters.min_price));
+    conditions.push('r.base_price >= ?');
+    params.push(Number(filters.min_price));
   }
 
   if (filters.max_price !== undefined) {
-    results = results.filter((room) => room.base_price <= Number(filters.max_price));
+    conditions.push('r.base_price <= ?');
+    params.push(Number(filters.max_price));
   }
 
-  if (filters.area || filters.hotel_chain_id || filters.rating) {
-    results = results.filter((room) => {
-      const hotel = hotels.find((h) => h.hotel_id === room.hotel_id);
-      if (!hotel) return false;
-
-      if (filters.area && !hotel.area.toLowerCase().includes(String(filters.area).toLowerCase())) {
-        return false;
-      }
-
-      if (filters.hotel_chain_id && hotel.chain_id !== Number(filters.hotel_chain_id)) {
-        return false;
-      }
-
-      if (filters.rating && hotel.rating !== Number(filters.rating)) {
-        return false;
-      }
-
-      return true;
-    });
+  if (filters.area) {
+    conditions.push('LOWER(h.area) LIKE LOWER(?)');
+    params.push(`%${filters.area}%`);
   }
 
-  return results;
+  if (filters.hotel_chain_id) {
+    conditions.push('h.chain_id = ?');
+    params.push(Number(filters.hotel_chain_id));
+  }
+
+  if (filters.rating) {
+    conditions.push('h.rating = ?');
+    params.push(Number(filters.rating));
+  }
+
+  if (conditions.length > 0) {
+    query += ` WHERE ${conditions.join(' AND ')}`;
+  }
+
+  return db.prepare(query).all(...params);
 }
 
 module.exports = {
-  getAll,
   getByHotelId,
   getByCompositeKey,
   create,

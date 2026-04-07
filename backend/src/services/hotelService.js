@@ -45,12 +45,7 @@ function createHotel(data) {
     throw error;
   }
 
-  const hotelToCreate = {
-    ...data,
-    chain_name: chain.chain_name,
-  };
-
-  return hotelRepository.create(hotelToCreate);
+  return hotelRepository.create(data);
 }
 
 function updateHotel(hotelId, data) {
@@ -62,8 +57,6 @@ function updateHotel(hotelId, data) {
     throw error;
   }
 
-  let chainName = existingHotel.chain_name;
-
   if (data.chain_id !== undefined) {
     const chain = hotelChainRepository.getById(data.chain_id);
 
@@ -72,8 +65,6 @@ function updateHotel(hotelId, data) {
       error.status = 400;
       throw error;
     }
-
-    chainName = chain.chain_name;
   }
 
   if (data.rating !== undefined) {
@@ -85,10 +76,7 @@ function updateHotel(hotelId, data) {
     }
   }
 
-  return hotelRepository.update(hotelId, {
-    ...data,
-    chain_name: chainName,
-  });
+  return hotelRepository.update(hotelId, data);
 }
 
 function deleteHotel(hotelId) {

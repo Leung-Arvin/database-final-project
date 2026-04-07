@@ -1,79 +1,151 @@
-const { hotels } = require('../data/mockData');
+const Database = require('better-sqlite3');
+const path = require('path');
+
+const db = new Database(path.resolve(__dirname, '../data/hotel-database.db'));
 
 function getAll(filters = {}) {
-  let results = [...hotels];
+  let query = `
+    SELECT
+      hotel_id,
+      chain_id,
+      rating,
+      address,
+      area,
+      contact_email,
+      manager_employee_id
+    FROM Hotel
+  `;
 
-  if (filters.chain_id) {
-    results = results.filter((hotel) => hotel.chain_id === Number(filters.chain_id));
+  const conditions = [];
+  const params = [];
+
+  if (filters.chain_id !== undefined && filters.chain_id !== '') {
+    conditions.push('chain_id = ?');
+    params.push(Number(filters.chain_id));
   }
 
-  if (filters.rating) {
-    results = results.filter((hotel) => hotel.rating === Number(filters.rating));
+  if (filters.rating !== undefined && filters.rating !== '') {
+    conditions.push('rating = ?');
+    params.push(Number(filters.rating));
   }
 
-  if (filters.area) {
-    results = results.filter((hotel) =>
-      hotel.area.toLowerCase().includes(String(filters.area).toLowerCase())
-    );
+  if (filters.area !== undefined && filters.area !== '') {
+    conditions.push('LOWER(area) LIKE LOWER(?)');
+    params.push(`%${String(filters.area)}%`);
   }
 
-  return results;
+  if (conditions.length > 0) {
+    query += ` WHERE ${conditions.join(' AND ')}`;
+  }
+
+  query += ' ORDER BY hotel_id';
+
+  return db.prepare(query).all(...params);
 }
 
 function getById(hotelId) {
-  return hotels.find((hotel) => hotel.hotel_id === Number(hotelId));
+  const stmt = db.prepare(`
+    SELECT
+      hotel_id,
+      chain_id,
+      rating,
+      address,
+      area,
+      contact_email,
+      manager_employee_id
+    FROM Hotel
+    WHERE hotel_id = ?
+  `);
+
+  return stmt.get(Number(hotelId)) || null;
 }
 
 function create(data) {
-  const newHotel = {
-    hotel_id: hotels.length > 0
-      ? Math.max(...hotels.map((hotel) => hotel.hotel_id)) + 1
-      : 1,
-    chain_id: Number(data.chain_id),
-    chain_name: data.chain_name,
-    rating: Number(data.rating),
-    address: data.address,
-    area: data.area,
-    contact_email: data.contact_email,
-    manager_employee_id:
-      data.manager_employee_id === undefined || data.manager_employee_id === null || data.manager_employee_id === ''
-        ? null
-        : Number(data.manager_employee_id),
-  };
+  const stmt = db.prepare(`
+    INSERT INTO Hotel (
+      chain_id,
+      rating,
+      address,
+      area,
+      contact_email,
+      manager_employee_id
+    )
+    VALUES (?, ?, ?, ?, ?, ?)
+  `);
 
-  hotels.push(newHotel);
-  return newHotel;
+  const result = stmt.run(
+    Number(data.chain_id),
+    Number(data.rating),
+    data.address,
+    data.area,
+    data.contact_email,
+    data.manager_employee_id === undefined ||
+    data.manager_employee_id === null ||
+    data.manager_employee_id === ''
+      ? null
+      : Number(data.manager_employee_id)
+  );
+
+  return getById(result.lastInsertRowid);
 }
 
 function update(hotelId, data) {
-  const index = hotels.findIndex((hotel) => hotel.hotel_id === Number(hotelId));
+  const existingHotel = getById(hotelId);
 
-  if (index === -1) return null;
+  if (!existingHotel) return null;
 
-  hotels[index] = {
-    ...hotels[index],
-    ...data,
-    hotel_id: hotels[index].hotel_id,
-    chain_id: data.chain_id !== undefined ? Number(data.chain_id) : hotels[index].chain_id,
-    rating: data.rating !== undefined ? Number(data.rating) : hotels[index].rating,
+  const updatedHotel = {
+    chain_id:
+      data.chain_id !== undefined ? Number(data.chain_id) : existingHotel.chain_id,
+    rating:
+      data.rating !== undefined ? Number(data.rating) : existingHotel.rating,
+    address:
+      data.address !== undefined ? data.address : existingHotel.address,
+    area:
+      data.area !== undefined ? data.area : existingHotel.area,
+    contact_email:
+      data.contact_email !== undefined ? data.contact_email : existingHotel.contact_email,
     manager_employee_id:
       data.manager_employee_id !== undefined
         ? (data.manager_employee_id === null || data.manager_employee_id === ''
             ? null
             : Number(data.manager_employee_id))
-        : hotels[index].manager_employee_id,
+        : existingHotel.manager_employee_id,
   };
 
-  return hotels[index];
+  const stmt = db.prepare(`
+    UPDATE Hotel
+    SET
+      chain_id = ?,
+      rating = ?,
+      address = ?,
+      area = ?,
+      contact_email = ?,
+      manager_employee_id = ?
+    WHERE hotel_id = ?
+  `);
+
+  stmt.run(
+    updatedHotel.chain_id,
+    updatedHotel.rating,
+    updatedHotel.address,
+    updatedHotel.area,
+    updatedHotel.contact_email,
+    updatedHotel.manager_employee_id,
+    Number(hotelId)
+  );
+
+  return getById(hotelId);
 }
 
 function remove(hotelId) {
-  const index = hotels.findIndex((hotel) => hotel.hotel_id === Number(hotelId));
+  const stmt = db.prepare(`
+    DELETE FROM Hotel
+    WHERE hotel_id = ?
+  `);
 
-  if (index === -1) return false;
-
-  hotels.splice(index, 1);
-  return true;
+  const result = stmt.run(Number(hotelId));
+  return result.changes > 0;
 }
 
 module.exports = {
