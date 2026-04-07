@@ -21,14 +21,6 @@ function getArchivedBookingById(req, res, next) {
   }
 }
 
-function archiveBooking(req, res, next) {
-  try {
-    const archivedBooking = archiveService.archiveBooking(req.params.bookingId);
-    return success(res, archivedBooking, 'Booking archived successfully', 201);
-  } catch (error) {
-    next(error);
-  }
-}
 
 function getAllArchivedRentings(req, res, next) {
   try {
@@ -50,20 +42,9 @@ function getArchivedRentingById(req, res, next) {
   }
 }
 
-function archiveRenting(req, res, next) {
-  try {
-    const archivedRenting = archiveService.archiveRenting(req.params.rentingId);
-    return success(res, archivedRenting, 'Renting archived successfully', 201);
-  } catch (error) {
-    next(error);
-  }
-}
-
 module.exports = {
   getAllArchivedBookings,
   getArchivedBookingById,
-  archiveBooking,
   getAllArchivedRentings,
   getArchivedRentingById,
-  archiveRenting,
 };

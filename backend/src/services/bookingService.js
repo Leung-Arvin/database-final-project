@@ -1,8 +1,8 @@
 const bookingRepository = require('../repositories/bookingRepository');
-const hotelRepository = require('../repositories/hotelRepository');
-const roomRepository = require('../repositories/roomRepository');
 const customerRepository = require('../repositories/customerRepository');
+const hotelRepository = require('../repositories/hotelRepository');
 const hotelChainRepository = require('../repositories/hotelChainRepository');
+const roomRepository = require('../repositories/roomRepository');
 
 function getAllBookings(filters) {
   return bookingRepository.getAll(filters);
@@ -46,6 +46,13 @@ function createBooking(data) {
   const hotel = hotelRepository.getById(data.hotel_id);
   if (!hotel) {
     const error = new Error('Hotel not found');
+    error.status = 400;
+    throw error;
+  }
+
+  const chain = hotelChainRepository.getById(hotel.chain_id);
+  if (!chain) {
+    const error = new Error('Hotel chain not found');
     error.status = 400;
     throw error;
   }
@@ -109,24 +116,16 @@ function createBooking(data) {
     throw error;
   }
 
-  const chain = hotelChainRepository.getById(hotel.chain_id);
-
-  if (!chain) {
-    const error = new Error('Hotel chain not found');
-    error.status = 400;
-    throw error;
-  }
-
   return bookingRepository.create({
-    customer_id: data.customer_id,
-    hotel_id: data.hotel_id,
+    customer_id: Number(data.customer_id),
+    hotel_id: Number(data.hotel_id),
     room_number: Number(data.room_number),
     hotel_name_snapshot: `${chain.chain_name} - ${hotel.area}`,
     hotel_address_snapshot: hotel.address,
     room_number_snapshot: Number(data.room_number),
     start_date: data.start_date,
     end_date: data.end_date,
-    booking_price: data.booking_price,
+    booking_price: Number(data.booking_price),
     status: 'active',
   });
 }
@@ -166,7 +165,8 @@ function cancelBooking(bookingId) {
     throw error;
   }
 
-  return bookingRepository.updateStatus(bookingId, 'cancelled');
+  bookingRepository.updateStatus(bookingId, 'cancelled');
+  return bookingRepository.softDelete(bookingId);
 }
 
 function confirmBooking(bookingId) {
@@ -178,8 +178,8 @@ function confirmBooking(bookingId) {
     throw error;
   }
 
-  if (booking.status === 'cancelled') {
-    const error = new Error('Cannot confirm a cancelled booking');
+  if (booking.status === 'converted_to_renting') {
+    const error = new Error('Cannot reactivate a booking that has already been converted to renting');
     error.status = 400;
     throw error;
   }

@@ -1,8 +1,10 @@
 const rentingRepository = require('../repositories/rentingRepository');
 const bookingRepository = require('../repositories/bookingRepository');
 const hotelRepository = require('../repositories/hotelRepository');
+const hotelChainRepository = require('../repositories/hotelChainRepository');
 const roomRepository = require('../repositories/roomRepository');
-const { customers, employees } = require('../data/mockData');
+const customerRepository = require('../repositories/customerRepository');
+const employeeRepository = require('../repositories/employeeRepository');
 
 function getAllRentings() {
   return rentingRepository.getAll();
@@ -34,15 +36,13 @@ function checkIn(data) {
     throw error;
   }
 
-  if (booking.status !== 'confirmed') {
-    const error = new Error('Only confirmed bookings can be checked in');
+  if (booking.status !== 'active') {
+    const error = new Error('Only active bookings can be checked in');
     error.status = 400;
     throw error;
   }
 
-  const employee = employees.find(
-    (item) => item.employee_id === Number(data.employee_id)
-  );
+  const employee = employeeRepository.getById(data.employee_id);
   if (!employee) {
     const error = new Error('Employee not found');
     error.status = 400;
@@ -102,14 +102,14 @@ function checkIn(data) {
   const totalAmount = price * nights;
 
   const renting = rentingRepository.create({
-    customer_id: booking.customer_id,
-    hotel_id: booking.hotel_id,
-    room_number: booking.room_number,
-    employee_id: data.employee_id,
-    booking_id: booking.booking_id,
+    customer_id: Number(booking.customer_id),
+    hotel_id: Number(booking.hotel_id),
+    room_number: Number(booking.room_number),
+    employee_id: Number(data.employee_id),
+    booking_id: Number(booking.booking_id),
     hotel_name_snapshot: booking.hotel_name_snapshot,
     hotel_address_snapshot: booking.hotel_address_snapshot,
-    room_number_snapshot: booking.room_number_snapshot,
+    room_number_snapshot: Number(booking.room_number_snapshot),
     check_in_date: booking.start_date,
     check_out_date: booking.end_date,
     actual_check_in: actualCheckIn,
@@ -117,11 +117,10 @@ function checkIn(data) {
     price,
     total_amount: totalAmount,
     payment_method: data.payment_method || null,
-    payment_status:
-      data.payment_amount && Number(data.payment_amount) > 0 ? 'paid' : 'pending',
   });
 
-  bookingRepository.updateStatus(booking.booking_id, 'checked_in');
+  bookingRepository.updateStatus(booking.booking_id, 'converted_to_renting');
+  bookingRepository.softDelete(booking.booking_id);
 
   return renting;
 }
@@ -144,18 +143,14 @@ function directRent(data) {
     throw error;
   }
 
-  const customer = customers.find(
-    (item) => item.customer_id === Number(data.customer_id)
-  );
+  const customer = customerRepository.getById(data.customer_id);
   if (!customer) {
     const error = new Error('Customer not found');
     error.status = 400;
     throw error;
   }
 
-  const employee = employees.find(
-    (item) => item.employee_id === Number(data.employee_id)
-  );
+  const employee = employeeRepository.getById(data.employee_id);
   if (!employee) {
     const error = new Error('Employee not found');
     error.status = 400;
@@ -171,6 +166,13 @@ function directRent(data) {
   const hotel = hotelRepository.getById(data.hotel_id);
   if (!hotel) {
     const error = new Error('Hotel not found');
+    error.status = 400;
+    throw error;
+  }
+
+  const chain = hotelChainRepository.getById(hotel.chain_id);
+  if (!chain) {
+    const error = new Error('Hotel chain not found');
     error.status = 400;
     throw error;
   }
@@ -242,19 +244,20 @@ function directRent(data) {
   );
 
   const price = Number(room.base_price);
-  const totalAmount = Number(data.payment_amount) > 0
-    ? Number(data.payment_amount)
-    : price * nights;
+  const totalAmount =
+    Number(data.payment_amount) > 0
+      ? Number(data.payment_amount)
+      : price * nights;
 
   return rentingRepository.create({
-    customer_id: data.customer_id,
-    hotel_id: data.hotel_id,
-    room_number: data.room_number,
-    employee_id: data.employee_id,
+    customer_id: Number(data.customer_id),
+    hotel_id: Number(data.hotel_id),
+    room_number: Number(data.room_number),
+    employee_id: Number(data.employee_id),
     booking_id: null,
-    hotel_name_snapshot: `${hotel.chain_name} - ${hotel.area}`,
+    hotel_name_snapshot: `${chain.chain_name} - ${hotel.area}`,
     hotel_address_snapshot: hotel.address,
-    room_number_snapshot: data.room_number,
+    room_number_snapshot: Number(data.room_number),
     check_in_date: data.start_date,
     check_out_date: data.end_date,
     actual_check_in: new Date().toISOString(),
@@ -262,11 +265,10 @@ function directRent(data) {
     price,
     total_amount: totalAmount,
     payment_method: data.payment_method,
-    payment_status: 'paid',
   });
 }
 
-function checkOut(rentingId, paymentAmount, paymentMethod) {
+function checkOut(rentingId, payment_amount, payment_method) {
   const renting = rentingRepository.getById(rentingId);
 
   if (!renting) {
@@ -284,14 +286,11 @@ function checkOut(rentingId, paymentAmount, paymentMethod) {
   const updated = rentingRepository.update(rentingId, {
     actual_check_out: new Date().toISOString(),
     total_amount:
-      paymentAmount !== undefined ? Number(paymentAmount) : renting.total_amount,
-    payment_method: paymentMethod || renting.payment_method,
-    payment_status: 'paid',
+      payment_amount !== undefined ? Number(payment_amount) : renting.total_amount,
+    payment_method: payment_method || renting.payment_method,
   });
 
-  if (renting.booking_id) {
-    bookingRepository.updateStatus(renting.booking_id, 'checked_out');
-  }
+  rentingRepository.softDelete(rentingId);
 
   return updated;
 }

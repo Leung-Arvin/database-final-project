@@ -1,6 +1,4 @@
 const archiveRepository = require('../repositories/archiveRepository');
-const bookingRepository = require('../repositories/bookingRepository');
-const rentingRepository = require('../repositories/rentingRepository');
 
 function getAllArchivedBookings() {
   return archiveRepository.getAllArchivedBookings();
@@ -16,18 +14,6 @@ function getArchivedBookingById(archiveId) {
   }
 
   return archivedBooking;
-}
-
-function archiveBooking(bookingId) {
-  const booking = bookingRepository.getById(bookingId);
-
-  if (!booking) {
-    const error = new Error('Booking not found');
-    error.status = 404;
-    throw error;
-  }
-
-  return archiveRepository.archiveBooking(bookingId);
 }
 
 function getAllArchivedRentings() {
@@ -46,23 +32,9 @@ function getArchivedRentingById(archiveId) {
   return archivedRenting;
 }
 
-function archiveRenting(rentingId) {
-  const renting = rentingRepository.getById(rentingId);
-
-  if (!renting) {
-    const error = new Error('Renting not found');
-    error.status = 404;
-    throw error;
-  }
-
-  return archiveRepository.archiveRenting(rentingId);
-}
-
 module.exports = {
   getAllArchivedBookings,
   getArchivedBookingById,
-  archiveBooking,
   getAllArchivedRentings,
   getArchivedRentingById,
-  archiveRenting,
 };

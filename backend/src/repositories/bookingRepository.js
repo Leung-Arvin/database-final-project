@@ -1,33 +1,41 @@
 const db = require('../db');
 
 function getAll(filters = {}) {
-  let query = `SELECT * FROM Booking WHERE isDeleted = 0`;
+  let query = `
+    SELECT *
+    FROM Booking
+    WHERE isDeleted = 0
+  `;
   const params = [];
 
   if (filters.status) {
-    query += ` AND status = ?`;
+    query += ' AND status = ?';
     params.push(filters.status);
   }
 
   if (filters.hotel_id) {
-    query += ` AND hotel_id = ?`;
+    query += ' AND hotel_id = ?';
     params.push(Number(filters.hotel_id));
   }
 
   if (filters.customer_id) {
-    query += ` AND customer_id = ?`;
+    query += ' AND customer_id = ?';
     params.push(Number(filters.customer_id));
   }
+
+  query += ' ORDER BY booking_id';
 
   return db.prepare(query).all(...params);
 }
 
 function getById(bookingId) {
-  return db.prepare(`
-    SELECT *
-    FROM Booking
-    WHERE booking_id = ? AND isDeleted = 0
-  `).get(Number(bookingId)) || null;
+  return (
+    db.prepare(`
+      SELECT *
+      FROM Booking
+      WHERE booking_id = ? AND isDeleted = 0
+    `).get(Number(bookingId)) || null
+  );
 }
 
 function create(data) {
@@ -72,6 +80,7 @@ function updateStatus(bookingId, status) {
   `).run(status, Number(bookingId));
 
   if (result.changes === 0) return null;
+
   return getById(bookingId);
 }
 
@@ -83,11 +92,12 @@ function softDelete(bookingId) {
   `).run(Number(bookingId));
 
   if (result.changes === 0) return null;
+
   return db.prepare(`
     SELECT *
     FROM Booking
     WHERE booking_id = ?
-  `).get(Number(bookingId));
+  `).get(Number(bookingId)) || null;
 }
 
 function findOverlappingBookings(hotelId, roomNumber, startDate, endDate) {
